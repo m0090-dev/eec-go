@@ -1,0 +1,14 @@
+envs = [
+    ["TEST_ENV","$(USERPROFILE)/test"],
+    ["DEV_TOOLS_PATH","D:\\win\\dev-tools"],
+    ["LIB",["testLib","testLib2"]],
+]
+
+paths = [
+    "test\\to\\path1\\",
+    "test\\to\\path2\\",   
+    "test\\to\\path3\\",   
+    "test\\to\\pat4\\", 
+    "$(USERPROFILE)\\test\\",
+    "$(DEV_TOOLS_PATH)\\test"
+]
