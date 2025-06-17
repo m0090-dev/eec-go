@@ -20,6 +20,8 @@ type TagData struct {
 	ConfigFile  string
 	Program     string
 	ProgramArgs []string
+	ImportConfigFiles []string
+	//Description string TODO: 要追加検討
 }
 
 // ---------------------------
@@ -48,6 +50,9 @@ func (t *TagData) Write(tagName string) error {
 	if err := writeStringSlice(&buf, t.ProgramArgs); err != nil {
 		return err
 	}
+	if err := writeStringSlice(&buf, t.ImportConfigFiles); err != nil {
+		return err
+	}
 
 	if err := os.WriteFile(tagPath, buf.Bytes(), 0644); err != nil {
 		return err
@@ -58,6 +63,7 @@ func (t *TagData) Write(tagName string) error {
 		Str("ConfigFile", t.ConfigFile).
 		Str("Program", t.Program).
 		Str("Args", strings.Join(t.ProgramArgs, ", ")).
+		Str("Import config files", strings.Join(t.ImportConfigFiles, ", ")).
 		Msg("TagData written successfully")
 
 	return nil
@@ -90,11 +96,16 @@ func ReadTagData(tagName string) (TagData, error) {
 	if data.ProgramArgs, err = readStringSlice(buf); err != nil {
 		return TagData{}, err
 	}
+	
+	if data.ImportConfigFiles, err = readStringSlice(buf); err != nil {
+		return TagData{}, err
+	}
 
 	log.Info().
 		Str("ConfigFile", data.ConfigFile).
 		Str("Program", data.Program).
 		Str("Args", strings.Join(data.ProgramArgs, " ")).
+		Str("Import config files", strings.Join(data.ImportConfigFiles, ", ")).
 		Msg("TagData read successfully")
 
 	return data, nil
@@ -160,6 +171,7 @@ var (
 	configFileTagFlag  string
 	programTagFlag     string
 	programArgsTagFlag []string
+	importConfigFilesTagFlag []string
 )
 
 // ---------------------------
@@ -210,12 +222,16 @@ var addTagCmd = &cobra.Command{
 		log.Debug().
 			Str("programArgsFlag", strings.Join(programArgsTagFlag, ", ")).
 			Msg("")
+		log.Debug().
+			Str("Import config files", strings.Join(importConfigFilesTagFlag, ", ")).
+			Msg("")	
 		//
 
 		data := TagData{
 			ConfigFile:  configFileTagFlag,
 			Program:     programTagFlag,
 			ProgramArgs: programArgsTagFlag,
+			ImportConfigFiles: importConfigFilesTagFlag,
 		}
 		if err := data.Write(tagName); err != nil {
 			log.Error().Err(err).Msg("タグファイルの書き込みに失敗しました")
@@ -236,8 +252,8 @@ var readTagCmd = &cobra.Command{
 			log.Error().Err(err).Msg("タグファイルの読み込みに失敗しました")
 			os.Exit(1)
 		}
-		fmt.Printf("Tag: %s\n  Config: %s\n  Program: %s\n  Args: %v\n",
-			tagName, data.ConfigFile, data.Program, data.ProgramArgs)
+		fmt.Printf("Tag: %s\n  Config: %s\n  Program: %s\n  Args: %v\n  Import config files: %v\n",
+			tagName, data.ConfigFile, data.Program, data.ProgramArgs,data.ImportConfigFiles)
 	},
 }
 var listTagCmd = &cobra.Command{
@@ -296,6 +312,7 @@ func init() {
 	addTagCmd.Flags().StringVar(&configFileTagFlag, "config-file", "", "Config file")
 	addTagCmd.Flags().StringVar(&programTagFlag, "program", "", "Program name")
 	addTagCmd.Flags().StringSliceVar(&programArgsTagFlag, "program-args", []string{}, "Program args")
+	addTagCmd.Flags().StringSliceVar(&importConfigFilesTagFlag, "import", []string{}, "Import config files")
 
 	tagCmd.AddCommand(addTagCmd)
 	tagCmd.AddCommand(readTagCmd)

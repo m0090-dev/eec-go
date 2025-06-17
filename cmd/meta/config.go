@@ -13,8 +13,12 @@ import (
 
 type Config struct {
 	Envs []Env `toml:"envs"`
+	Program ProgramData `toml:"program"` 
 }
-
+type ProgramData struct {
+	Path string   `toml:"path"`
+	Args []string `toml:"args"`
+}
 type Env struct {
 	Key   string      `toml:"key"`
 	Value interface{} `toml:"value"`

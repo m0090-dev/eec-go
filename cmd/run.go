@@ -25,6 +25,7 @@ var configFileRunFlag string
 var programRunFlag string
 var programArgsRunFlag []string
 var tagRunFlag string
+var importsRunFlag []string
 
 // ---------------------------
 // 拡張子を除いたファイル名を返す関数
@@ -67,13 +68,13 @@ to quickly create a Cobra application.`,
 		var configFile string
 		var program string
 		var pArgs []string
-
+		var config meta.Config
+		var err error
 		if tagRunFlag == "" {
 			configFile = configFileRunFlag
 			program = programRunFlag
 			pArgs = programArgsRunFlag
 		} else {
-			var err error
 			tagData, err = ReadTagData(tagRunFlag)
 			if err != nil {
 				log.Error().
@@ -82,9 +83,49 @@ to quickly create a Cobra application.`,
 					Msg("タグデータの読み込みに失敗しました")
 				os.Exit(1)
 			}
+
 			configFile = tagData.ConfigFile
 			program = tagData.Program
 			pArgs = tagData.ProgramArgs
+
+			// タグデータがある中、引数指定もある場合(引数を優先し、上書き)
+			if configFileRunFlag != "" {
+				configFile = configFileRunFlag
+			}
+			if programRunFlag != "" {
+				program = programRunFlag
+			}
+			if len(programArgsRunFlag) != 0 {
+				pArgs = programArgsRunFlag
+			}
+
+		}
+
+		if configFile != "" && utils.FileExists(configFile) {
+			config, err = meta.ReadConfig(configFile)
+		} else {
+			config, err = meta.ReadInlineConfig(configFile)
+		}
+
+		// タグ指定がなければ、設定ファイルの値で上書き
+		// タグ指定ありでも、タグに program がなければ設定ファイルの値で補完する
+		if tagRunFlag == "" || tagData.Program == "" {
+			if config.Program.Path != "" {
+				program = config.Program.Path
+			}
+		}
+		if tagRunFlag == "" || len(tagData.ProgramArgs) == 0 {
+			if len(config.Program.Args) != 0 {
+				pArgs = config.Program.Args
+			}
+		}
+
+		// もし設定ファイルにprogram,program-argsがあるなか、引数指定もある場合(引数を優先し、上書き)
+		if programRunFlag != "" {
+			program = programRunFlag
+		}
+		if len(programArgsRunFlag) != 0 {
+			pArgs = programArgsRunFlag
 		}
 
 		tmpDir := os.TempDir()
@@ -111,13 +152,6 @@ to quickly create a Cobra application.`,
 			Str("Temp file", tmpPath).
 			Msg("Created temp file")
 
-		var config meta.Config
-		if configFile != "" && utils.FileExists(configFile) {
-			config, err = meta.ReadConfig(configFile)
-		} else {
-			config, err = meta.ReadInlineConfig(configFile)
-		}
-
 		if err != nil {
 			log.Error().
 				Err(err).
@@ -143,51 +177,28 @@ to quickly create a Cobra application.`,
 			Str("Manifest file", manifestPath).
 			Msg("Created manifest file")
 
-		//currentPaths := strings.Split(paths, separator)
-		//newPath := currentPaths
+		if len(tagData.ImportConfigFiles) != 0{
+			for _, importEnvFile := range tagData.ImportConfigFiles {
+				var importConfig meta.Config
+				if importEnvFile != "" && utils.FileExists(importEnvFile) {
+					importConfig, err = meta.ReadConfig(importEnvFile)
+				} else {
+					importConfig, err = meta.ReadInlineConfig(importEnvFile)
+				}
+				importConfig.ApplyEnvs()
+			}
 
-		/* for _, envVar := range config.Envs {*/
-		/*if len(envVar) >= 2 {*/
-		/*// キー部分（文字列にキャスト）*/
-		/*key, ok := envVar[0].(string)*/
-		/*if !ok {*/
-		/*log.Warn().Interface("envVar", envVar).Msg("envのキーが文字列ではありません")*/
-		/*continue*/
-		/*}*/
-
-		/*// 値部分の型をチェック*/
-		/*switch val := envVar[1].(type) {*/
-		/*case string:*/
-		/*// スカラー文字列*/
-		/*expanded := utils.ExpandEnvVariables(val)*/
-		/*os.Setenv(key, expanded)*/
-
-		/*case []interface{}:*/
-		/*// 文字列配列（interface{}として来る）*/
-		/*strVals := make([]string, 0, len(val))*/
-		/*for _, v := range val {*/
-		/*if s, ok := v.(string); ok {*/
-		/*strVals = append(strVals, utils.ExpandEnvVariables(s))*/
-		/*}*/
-		/*}*/
-		/*os.Setenv(key, strings.Join(strVals, separator)) // セミコロン or コロン*/
-		/*default:*/
-		/*log.Warn().*/
-		/*Str("key", key).*/
-		/*Interface("value", envVar[1]).*/
-		/*Msg("envの値の型が未対応")*/
-		/*}*/
-		/*}*/
-		/*}*/
-
-		/* for _, path := range config.Paths {*/
-		/*expandedPath := utils.ExpandEnvVariables(path)*/
-		/*if expandedPath != "" {*/
-		/*newPath = append(newPath, expandedPath)*/
-		/*}*/
-		/*}*/
-		/*os.Setenv("Path", strings.Join(newPath, separator))*/
-
+		} else if len(importsRunFlag) != 0 {
+			for _, importEnvFile := range importsRunFlag {
+				var importConfig meta.Config
+				if importEnvFile != "" && utils.FileExists(importEnvFile) {
+					importConfig, err = meta.ReadConfig(importEnvFile)
+				} else {
+					importConfig, err = meta.ReadInlineConfig(importEnvFile)
+				}
+				importConfig.ApplyEnvs()
+			}
+		}
 		config.ApplyEnvs()
 
 		executeCommand := exec.Command(program, pArgs...)
@@ -265,6 +276,7 @@ func init() {
 	runCmd.Flags().StringSliceVar(&programArgsRunFlag, "program-args", []string{}, "Program args")
 
 	runCmd.Flags().StringVar(&tagRunFlag, "tag", "", "Tag name")
+	runCmd.Flags().StringSliceVar(&importsRunFlag, "import", []string{}, "Import config files")
 
 	rootCmd.AddCommand(runCmd)
 

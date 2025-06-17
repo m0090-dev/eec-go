@@ -1,4 +1,5 @@
 @echo off
+chcp 65001
 set "eec_deleter=eec-deleter.exe"
 set "eec_exe=D:\win\program\go\main-project\eec\build\eec"
 tasklist /FI "IMAGENAME eq %eec_deleter%" /NH | find /I "%eec_deleter%" >nul

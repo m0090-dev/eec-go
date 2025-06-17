@@ -154,8 +154,8 @@ value = [
     #"$(USERPROFILE)\\.pyenv\\pyenv-win\\versions\\3.9.0",
     "$(USERPROFILE)\\use-bin\\7zip\\7-Zip",
     # "$(DEV_TOOLS_PATH)\\i686-12.1.0-release-posix-dwarf-rt_v10-rev3\\mingw32\\bin\\",
-    #"$(DEV_TOOLS_PATH)\\x86_64-12.2.0-release-posix-seh-ucrt-rt_v10-rev2\\mingw64\\bin",
-    "$(DEV_TOOLS_PATH)\\x86_64-12.2.0-release-posix-seh-msvcrt-rt_v10-rev2\\mingw64\\bin",
+    "$(DEV_TOOLS_PATH)\\x86_64-12.2.0-release-posix-seh-ucrt-rt_v10-rev2\\mingw64\\bin",
+    #"$(DEV_TOOLS_PATH)\\x86_64-12.2.0-release-posix-seh-msvcrt-rt_v10-rev2\\mingw64\\bin",
 
 
     "$(DEV_TOOLS_PATH)\\microsoft-build-tools\\BuildTools\\VC\\Tools\\MSVC\\14.43.34808\\bin\\Hostx64\\x64",
