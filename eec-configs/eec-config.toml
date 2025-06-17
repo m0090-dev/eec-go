@@ -191,12 +191,5 @@ value = [
     "$(DEV_TOOLS_PATH)\\jq\\",
     "$(DEV_TOOLS_PATH)\\tinygo0.37.0.windows-amd64\\tinygo\\bin",
     "$(DEV_TOOLS_PATH)\\binaryen-version_122-x86_64-windows.tar\\binaryen-version_122-x86_64-windows\\binaryen-version_122\\bin",
-    "C:\\Users\\tanukimaru\\Downloads\\other\\grep-2.5.4-bin\\bin\\",
-    "C:\\Users\\tanukimaru\\Downloads\\other\\stylua-windows-x86_64\\",
-    "C:\\Users\\tanukimaru\\Downloads\\ripgrep-14.1.1-x86_64-pc-windows-msvc\\",
-    "C:\\Users\\tanukimaru\\Downloads\\sqlite-tools-win-x64-202501281250\\",
-    "C:\\Users\\tanukimaru\\Downloads\\emsdk-main\\",
-    "C:\\Users\\tanukimaru\\Downloads\\emsdk-main\\upstream\\bin\\",
-    "C:\\Users\\tanukimaru\\Downloads\\emsdk-main\\upstream\\emscripten\\",
 ]
 

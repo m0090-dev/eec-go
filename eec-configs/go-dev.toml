@@ -38,13 +38,7 @@ value = [
     "C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.26100.0\\ucrt\\x64",
     "C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.26100.0\\um\\x64",
     # Devtools and TestPath etc.
-    "$(DEV_TOOLS_PATH)\\neovim\\app\\bin",
-    "$(USERPROFILE)\\use-bin\\git\\CLI",
-   "$(DEV_TOOLS_PATH)\\nodejs\\bin\\",
-   "$(DEV_TOOLS_PATH)\\git\\Git\\bin",
-   "$(USERPROFILE)\\AppData\\Local\\Microsoft\\WindowsApps",
-   
-   "$(DEV_TOOLS_PATH)\\mpv",
+    "$(DEV_TOOLS_PATH)\\mpv",
    "$(DEV_TOOLS_PATH)\\x86_64-15.1.0-release-posix-seh-ucrt-rt_v12-rev0\\mingw64\\bin",
     "$(DEV_TOOLS_PATH)\\microsoft-build-tools\\BuildTools\\VC\\Tools\\MSVC\\14.43.34808\\bin\\Hostx64\\x64",
     "C:\\Program Files (x86)\\Windows Kits\\10\\bin\\10.0.26100.0\\x64",
