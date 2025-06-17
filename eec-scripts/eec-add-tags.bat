@@ -13,9 +13,11 @@ call eec tag add go-dev --config-file "%USER_EEC_CONFIG_DIR%\go-dev.toml" --impo
 call eec tag add dev --import "%USER_EEC_CONFIG_DIR%\base-dev.toml" --import "%USER_EEC_CONFIG_DIR%\go-dev.toml" --import "%USER_EEC_CONFIG_DIR%\rust-dev.toml" --import "%USER_EEC_CONFIG_DIR%\java-dev.toml" --import "%USER_EEC_CONFIG_DIR%\mingw-dev.toml" 
 
 
-call eec tag add dev-cmd00 --import dev --program cmd 
+call eec tag add dev-cmd00 --import dev --program cmd --program-args="/K checkitems %USER_EEC_CONFIG_DIR%\checkitems.csv"
+call eec tag add dev-cmd01 --import dev --program cmd --program-args="/K cd D:\win\program && D: && checkitems %USER_EEC_CONFIG_DIR%\checkitems.csv"
 
-
+call eec tag add dev-shell00 --import dev --program powershell  --program-args="-NoExit","-Command","Set-ExecutionPolicy RemoteSigned -Scope Process; checkitems %USER_EEC_CONFIG_DIR%\checkitems.csv"
+call eec tag add dev-shell01 --import dev --program powershell --program-args="-NoExit","-Command","Set-ExecutionPolicy RemoteSigned -Scope Process; checkitems %USER_EEC_CONFIG_DIR%\checkitems.csv; Set-Location -Path 'D:\win\program\'"
 
 echo タグの設定が終了しました
 :: キー入力を待機

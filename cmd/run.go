@@ -256,6 +256,63 @@ to quickly create a Cobra application.`,
 				} else {
 					// TODO: インライン用の引数で処理するようにするため要削除
 					//importConfig, err = meta.ReadInlineConfig(importEnvFile)
+			
+					// TODO: インライン用の引数で処理するようにするため要削除
+					//importConfig, err = meta.ReadInlineConfig(importEnvFile)
+					//}
+
+					//if err != nil {
+
+					//log.Info().
+						//Str("あいうえお2", manifestPath).
+						//Msg("")
+
+					// ファイル読み込みに失敗 → タグとして扱ってフォールバック
+					log.Warn().
+						Err(err).
+						Str("importEnvFile", importEnvFile).
+						Msg("Import 設定ファイルの読み込みに失敗しました。タグ名として解釈し、代替読み込みを試みます")
+
+					tagDataFromImport, tagErr := ReadTagData(importEnvFile)
+					if tagErr != nil {
+						log.Error().
+							Err(tagErr).
+							Str("importTagName", importEnvFile).
+							Msg("タグデータの読み込みにも失敗しました")
+						continue
+					}
+
+					foundAny := false
+					for _, fallbackImportFile := range tagDataFromImport.ImportConfigFiles {
+						if fallbackImportFile != "" && utils.FileExists(fallbackImportFile) {
+							importConfig, err = meta.ReadConfig(fallbackImportFile)
+						} else {
+							importConfig, err = meta.ReadInlineConfig(fallbackImportFile)
+						}
+
+						if err != nil {
+							log.Error().
+								Err(err).
+								Str("importEnvFile", fallbackImportFile).
+								Msg("ImportConfigFile の読み込みに失敗しました")
+							continue
+						}
+
+						importConfig.ApplyEnvs()
+						foundAny = true
+					}
+
+					if !foundAny {
+						log.Error().
+							Str("importTagName", importEnvFile).
+							Msg("タグ経由でも有効な ImportConfigFiles を読み込めませんでした")
+						continue
+					}
+
+					continue // タグから成功したら次のimportへ
+
+
+
 				}
 				importConfig.ApplyEnvs()
 			}
