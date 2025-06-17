@@ -11,6 +11,12 @@ call eec tag add android-studio00 --config-file "%USER_EEC_CONFIG_DIR%\android-s
 call eec tag add easy-up --program "D:\win\program\go\main-project\google-drive-easy-uploader\build\easy-up"
 call eec tag add go-dev --config-file "%USER_EEC_CONFIG_DIR%\go-dev.toml" --import "%USER_EEC_CONFIG_DIR%\base-dev.toml" 
 call eec tag add dev --import "%USER_EEC_CONFIG_DIR%\base-dev.toml" --import "%USER_EEC_CONFIG_DIR%\go-dev.toml" --import "%USER_EEC_CONFIG_DIR%\rust-dev.toml" --import "%USER_EEC_CONFIG_DIR%\java-dev.toml" --import "%USER_EEC_CONFIG_DIR%\mingw-dev.toml" 
+
+
+call eec tag add dev-cmd00 --import dev --program cmd 
+
+
+
 echo タグの設定が終了しました
 :: キー入力を待機
 pause
