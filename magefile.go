@@ -164,7 +164,7 @@ func BuildDeleter(mode string) error {
 	fmt.Printf("Building deleter (%s)...\n", mode)
 
 	root := projectRoot()
-	deleterDir := filepath.Join(root, "cmd/deleter")
+	deleterDir := filepath.Join(root, "cmd/eec-deleter")
 	buildFile := filepath.Join(root, "build", "eec-deleter"+targetExt)
 
 	ldflags, gcflags := buildModeArg(mode, "github.com/m0090-dev/eec/internal/ext/types")
