@@ -44,7 +44,7 @@ func (c *Config) NormalizeEnvs(logger interfaces.Logger) {
 	case []interface{}:
 		// 【パターン1：リスト形式】
 		// 1. [ {key: "K", value: "V"}, ... ] (従来形式)
-		// 2. [ {TEST: "いきすぎ"}, ... ] (リスト内直接定義)
+		// 2. [ {TEST: "aiueo"}, ... ] (リスト内直接定義)
 		for _, item := range data {
 			m, ok := item.(map[string]interface{})
 			if !ok {
@@ -58,7 +58,7 @@ func (c *Config) NormalizeEnvs(logger interfaces.Logger) {
 				continue
 			}
 
-			// B. リスト内直接定義のチェック: - TEST: "いきすぎ"
+			// B. リスト内直接定義のチェック: - TEST: "aiueo"
 			// map の中身をスキャンして最初の 1 つを取り出す
 			for k, v := range m {
 				if k != "" {
