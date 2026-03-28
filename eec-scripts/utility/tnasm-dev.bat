@@ -18,4 +18,4 @@ shift
 goto loop
 
 :run
-eec run --deleter-hide-window --hide-window --tag cygwin-dev
+eec run --deleter-hide-window --hide-window --tag nasm-dev
