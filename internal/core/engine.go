@@ -97,26 +97,25 @@ func (e *Engine) Run(ctx context.Context, opts types.RunOptions) error {
 		}
 	}
 
-       /* // ----------------------<]*/
+	/* // ----------------------<]*/
 	/*// メイン config 読み込み*/
 	/*// -----------------------*/
 	/*var config types.Config*/
 	/*if opts.ConfigFile != "" && e.FS().FileExists(opts.ConfigFile) {*/
-		/*config, err = types.ReadConfig(e.OS, e.Logger, opts.ConfigFile)*/
-		/*if err != nil {*/
-			/*e.Logger.Error().Err(err).Str("configFile", opts.ConfigFile).Msg("failed to read config")*/
-			/*return fmt.Errorf("failed to read config %s: %w", opts.ConfigFile, err)*/
-		/*}*/
+	/*config, err = types.ReadConfig(e.OS, e.Logger, opts.ConfigFile)*/
+	/*if err != nil {*/
+	/*e.Logger.Error().Err(err).Str("configFile", opts.ConfigFile).Msg("failed to read config")*/
+	/*return fmt.Errorf("failed to read config %s: %w", opts.ConfigFile, err)*/
+	/*}*/
 	/*}*/
 
 	// ----------------------*/
 	// ResolveRunOptions 呼び出し
 	// -----------------------*/
-	configFile, program, pArgs, finalEnv := domain.ResolveRunOptions(opts, tagData,e.OS, e.Logger)
+	configFile, program, pArgs, finalEnv := domain.ResolveRunOptions(opts, tagData, e.OS, e.Logger)
 	if program == "" {
 		return errors.New("no program specified")
 	}
-
 
 	// ----------------------*/
 	// build temp file
@@ -281,7 +280,6 @@ func (e *Engine) TagAdd(name string, tag types.TagData) error {
 }
 */
 
-
 // Tag-related core functions (create, list, delete).
 func (e *Engine) TagAdd(name string, tag types.TagData) error {
 	tagName := name
@@ -331,8 +329,6 @@ func (e *Engine) TagAdd(name string, tag types.TagData) error {
 	return nil
 }
 
-
-
 func (e *Engine) TagRead(tagName string) error {
 	data, err := types.ReadTagData(e.OS, e.Logger, tagName)
 	if err != nil {
@@ -362,8 +358,8 @@ func (e *Engine) TagList() error {
 		return fmt.Errorf("Failed to tag list")
 	}
 	e.Logger.Info().Str("message", "-- current tag lists --").Msg("Tag List Header")
-	for _,f := range fileLists{
-		fmt.Printf("%2s\n",f)
+	for _, f := range fileLists {
+		fmt.Printf("%2s\n", f)
 	}
 	return nil
 }
@@ -511,7 +507,6 @@ func (e *Engine) TagRemove(name string) error {
 	return nil
 }
 
-
 // Tree は指定されたタグ名に基づき、関連する設定ファイルや依存構造をツリー表示する。
 func (e *Engine) Tree(tagName string) error {
 	data, err := types.ReadTagData(e.OS, e.Logger, tagName)
@@ -632,4 +627,3 @@ func (e *Engine) printConfigTree(filePath string, prefix string, visited map[str
 
 	return nil
 }
-

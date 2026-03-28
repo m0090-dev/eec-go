@@ -1,9 +1,9 @@
 package general
+
 import (
 	"bytes"
 	"encoding/binary"
 )
-
 
 // ---------------------------
 // ヘルパー関数
@@ -56,4 +56,3 @@ func ReadStringSlice(buf *bytes.Reader) ([]string, error) {
 	}
 	return result, nil
 }
-

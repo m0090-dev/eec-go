@@ -3,9 +3,9 @@ package domain
 import (
 	"strings"
 	//"github.com/rs/zerolog/log"
-	"github.com/m0090-dev/eec/internal/ext/utils/general"
-	"github.com/m0090-dev/eec/internal/ext/types"
 	"github.com/m0090-dev/eec/internal/ext/interfaces"
+	"github.com/m0090-dev/eec/internal/ext/types"
+	"github.com/m0090-dev/eec/internal/ext/utils/general"
 	//"os"
 	"path/filepath"
 	"runtime"
@@ -40,7 +40,6 @@ if "%1"=="run" (
 	geec.exe
 `
 
-	
 	// Windows batch script (for cmd.exe)
 	windowsTagUtilsScript = `@echo off
 chcp 65001 >nul
@@ -90,7 +89,6 @@ goto loop
 eec run --deleter-hide-window --hide-window --tag %TAGNAME% --program %PROGRAM% 
 `
 
-
 	windowsTagUtilsScriptProgramArgs = `@echo off
 chcp 65001 >nul
 setlocal enabledelayedexpansion
@@ -115,7 +113,6 @@ goto loop
 eec run --deleter-hide-window --hide-window --tag %TAGNAME% --program-args=!ARGS!
 `
 
-
 	windowsTagSimpleUtilsScript = `@echo off
 setlocal enabledelayedexpansion
 
@@ -138,9 +135,9 @@ goto loop
 :run
 eec run --deleter-hide-window --hide-window --tag %TAGNAME%
 `
-	unixTagUtilsScript = ``
+	unixTagUtilsScript       = ``
 	unixTagSimpleUtilsScript = ``
-	unixWrapEECScript = `#!/bin/bash
+	unixWrapEECScript        = `#!/bin/bash
 # UTF-8 前提
 
 # ビルドディレクトリを PATH に追加
@@ -166,42 +163,38 @@ fi
 # eec 実行、引数をそのまま渡す
 "$eec_exe" "$@"
 `
-
-
 )
+
 func toWindowsLineEndings(s string) string {
-    s = strings.ReplaceAll(s, "\r\n", "\n")  // まずCRLFをLFに統一
-    s = strings.ReplaceAll(s, "\r", "\n")    // 万一CRのみがあればLFに変換
-    return strings.ReplaceAll(s, "\n", "\r\n")
+	s = strings.ReplaceAll(s, "\r\n", "\n") // まずCRLFをLFに統一
+	s = strings.ReplaceAll(s, "\r", "\n")   // 万一CRのみがあればLFに変換
+	return strings.ReplaceAll(s, "\n", "\r\n")
 }
 
 func GenWindowsTagUtilsScript(tagName string) string {
-    script := strings.ReplaceAll(windowsTagUtilsScript, "%TAGNAME%", tagName)
-    return toWindowsLineEndings(script)
+	script := strings.ReplaceAll(windowsTagUtilsScript, "%TAGNAME%", tagName)
+	return toWindowsLineEndings(script)
 }
 
 func GenWindowsSimpleTagUtilsScript(tagName string) string {
-    script := strings.ReplaceAll(windowsTagSimpleUtilsScript, "%TAGNAME%", tagName)
-    return toWindowsLineEndings(script)
+	script := strings.ReplaceAll(windowsTagSimpleUtilsScript, "%TAGNAME%", tagName)
+	return toWindowsLineEndings(script)
 }
 
 func GenWindowsTagUtilsScriptProgram(tagName string) string {
-    script := strings.ReplaceAll(windowsTagUtilsScriptProgram, "%TAGNAME%", tagName)
-    return toWindowsLineEndings(script)
+	script := strings.ReplaceAll(windowsTagUtilsScriptProgram, "%TAGNAME%", tagName)
+	return toWindowsLineEndings(script)
 }
 func GenWindowsTagUtilsScriptProgramArgs(tagName string) string {
-    script := strings.ReplaceAll(windowsTagUtilsScriptProgramArgs, "%TAGNAME%", tagName)
-    return toWindowsLineEndings(script)
+	script := strings.ReplaceAll(windowsTagUtilsScriptProgramArgs, "%TAGNAME%", tagName)
+	return toWindowsLineEndings(script)
 }
-
-
-
 
 func GenWindowsWrapScript() string {
-    return toWindowsLineEndings(windowsWrapEECScript)
+	return toWindowsLineEndings(windowsWrapEECScript)
 }
 func GenWindowsGUIWrapScript() string {
-    return toWindowsLineEndings(windowsWrapGEECScript)
+	return toWindowsLineEndings(windowsWrapGEECScript)
 }
 
 func GenUnixTagUtilsScript(tagName string) string {
@@ -216,39 +209,38 @@ func GenUnixWrapScript() string {
 	return unixWrapEECScript
 }
 
-
 /*func GenWrapScript(os ext.OS,logger ext.Logger) {*/
-	/*scriptDir := ext.DEFAULT_SCRIPT_DIR*/
-	/*var wrapScriptContent string*/
-	/*var wrapScriptFileName string*/
-	/*var wrapScriptFile string*/
-	/*baseName := "eec"*/
-	/*if runtime.GOOS == "windows" {*/
-		/*wrapScriptContent = GenWindowsWrapScript()*/
-		/*wrapScriptFileName = general.AddExtension(baseName, ".bat")*/
-	/*} else {*/
-		/*wrapScriptContent = GenUnixWrapScript()*/
-		/*wrapScriptFileName  = baseName*/
-	/*}*/
-	/*wrapScriptFile = filepath.Join(scriptDir, wrapScriptFileName)*/
-	/*// ディレクトリがなければ作成*/
-	/*if err := os.FS.MkdirAll(scriptDir, 0755); err != nil {*/
-		/*logger.Error().Err(err).Msg("Failed to create utils script directory")*/
-		/*return*/
-	/*}*/
-	/*file, err := os.FS.Create(wrapScriptFile)*/
-	/*if err != nil {*/
-		/*logger.Error().Err(err).Str("file", wrapScriptFile).Msg("Failed to create file")*/
-		/*return*/
-	/*}*/
+/*scriptDir := ext.DEFAULT_SCRIPT_DIR*/
+/*var wrapScriptContent string*/
+/*var wrapScriptFileName string*/
+/*var wrapScriptFile string*/
+/*baseName := "eec"*/
+/*if runtime.GOOS == "windows" {*/
+/*wrapScriptContent = GenWindowsWrapScript()*/
+/*wrapScriptFileName = general.AddExtension(baseName, ".bat")*/
+/*} else {*/
+/*wrapScriptContent = GenUnixWrapScript()*/
+/*wrapScriptFileName  = baseName*/
+/*}*/
+/*wrapScriptFile = filepath.Join(scriptDir, wrapScriptFileName)*/
+/*// ディレクトリがなければ作成*/
+/*if err := os.FS.MkdirAll(scriptDir, 0755); err != nil {*/
+/*logger.Error().Err(err).Msg("Failed to create utils script directory")*/
+/*return*/
+/*}*/
+/*file, err := os.FS.Create(wrapScriptFile)*/
+/*if err != nil {*/
+/*logger.Error().Err(err).Str("file", wrapScriptFile).Msg("Failed to create file")*/
+/*return*/
+/*}*/
 
-	/*func() {*/
-		/*defer file.Close()*/
-		/*_, err := file.WriteString(wrapScriptContent)*/
-		/*if err != nil {*/
-			/*return*/
-		/*}*/
-	/*}()*/
+/*func() {*/
+/*defer file.Close()*/
+/*_, err := file.WriteString(wrapScriptContent)*/
+/*if err != nil {*/
+/*return*/
+/*}*/
+/*}()*/
 
 /*}*/
 
@@ -296,12 +288,6 @@ func GenWrapScript(os types.OS, logger interfaces.Logger) {
 		}
 	}()
 
-
-
-
-
-
-
 	// --- Unix用スクリプト ---
 	unixScriptContent := GenUnixWrapScript()
 	unixScriptFileName := baseName
@@ -320,7 +306,7 @@ func GenWrapScript(os types.OS, logger interfaces.Logger) {
 	}()
 }
 
-func GenUtilsScript(os types.OS,logger interfaces.Logger) {
+func GenUtilsScript(os types.OS, logger interfaces.Logger) {
 	homeDir, _ := os.Env.UserHomeDir()
 	if homeDir == "" {
 		return
@@ -336,17 +322,16 @@ func GenUtilsScript(os types.OS,logger interfaces.Logger) {
 		logger.Debug().
 			Str("tagName", name).Msg("")
 
-		tagData, err := types.ReadTagData(os,logger,name)
+		tagData, err := types.ReadTagData(os, logger, name)
 		if err != nil {
 			logger.Error().Err(err).Str("tag", name).Msg("Failed to read tag data")
 			continue
 		}
 
-		
 		configFile := tagData.ConfigFile
 		var config types.Config
 		if configFile != "" && general.FileExists(configFile) {
-			config, err = types.ReadConfig(os,logger,configFile)
+			config, err = types.ReadConfig(os, logger, configFile)
 			if err != nil {
 				logger.Error().Err(err).Str("configFile", configFile).Msg("Failed to read config file")
 			}
@@ -415,5 +400,3 @@ func GenUtilsScript(os types.OS,logger interfaces.Logger) {
 		}()
 	}
 }
-
-

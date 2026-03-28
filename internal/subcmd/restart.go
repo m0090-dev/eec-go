@@ -23,8 +23,8 @@ to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		os := types.NewOS()
 		log := impl.NewDefaultLogger()
-		e := core.NewEngine(&os,log)
-		if err := e.Restart();err != nil {
+		e := core.NewEngine(&os, log)
+		if err := e.Restart(); err != nil {
 			log.Fatal().Err(err).Msg("Failed to restart")
 		}
 	},
