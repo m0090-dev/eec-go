@@ -12,7 +12,7 @@ jobs:
           - os: windows-latest
             goos: windows
             build_gui: true
-            build_lib: true  # Windowsのみライブラリをビルド
+            build_lib: true
           - os: ubuntu-latest
             goos: linux
             build_gui: false
@@ -35,7 +35,6 @@ jobs:
         with:
           go-version: '1.22'
 
-      # 外部Actionの404エラーを回避するため、Goで直接Mageをインストール
       - name: Install Mage
         run: go install github.com/magefile/mage@latest
 
@@ -56,35 +55,36 @@ jobs:
           CGO_ENABLED: 1
         shell: bash
         run: |
-          # インストールしたMageにパスを通す
           export PATH=$PATH:$(go env GOPATH)/bin
-          
-          # CLIは全OSでビルド
           mage BuildCLIRelease
+          if [ "${{ matrix.build_lib }}" = "true" ]; then mage BuildLibRelease; fi
+          if [ "${{ matrix.build_gui }}" = "true" ]; then mage BuildGUIRelease; fi
+
+      # 各OSの成果物をひとつのZIPにまとめる
+      - name: Package Assets
+        shell: bash
+        run: |
+          # アーカイブ名（例: eec-v1.0.0-windows.zip）
+          ZIP_NAME="eec-${{ github.ref_name }}-${{ matrix.goos }}.zip"
           
-          # ライブラリはWindowsジョブのみ実行
-          if [ "${{ matrix.build_lib }}" = "true" ]; then
-            mage BuildLibRelease
+          # buildディレクトリに移動して圧縮
+          cd build
+          
+          if [ "${{ matrix.os }}" == "windows-latest" ]; then
+            # Windows: 7zを使ってGUIフォルダや各種EXEを固める
+            7z a "../${ZIP_NAME}" ./*
+          else
+            # Linux/macOS: zipコマンド（標準搭載）を使用
+            zip -r "../${ZIP_NAME}" ./*
           fi
           
-          # GUIはWindowsジョブのみ実行
-          if [ "${{ matrix.build_gui }}" = "true" ]; then
-            mage BuildGUIRelease
-          fi
+          echo "ZIP_PATH=${ZIP_NAME}" >> $GITHUB_ENV
 
       - name: Release
         uses: softprops/action-gh-release@v2
         if: github.ref_type == 'tag'
         with:
-          # 各OSで生成されたバイナリを収集。存在しないファイルは無視されます。
-          files: |
-            build/eec
-            build/eec.exe
-            build/eec-deleter
-            build/eec-deleter.exe
-            build/libcengine.so
-            build/libcengine.dll
-            build/libcengine.dylib
-            build/gui/**
+          # ZIPファイルのみをアップロード
+          files: ${{ env.ZIP_PATH }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
