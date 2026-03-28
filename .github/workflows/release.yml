@@ -11,36 +11,73 @@ jobs:
         include:
           - os: windows-latest
             goos: windows
-            goarch: amd64
-            ext: .exe
+            build_lib: true
+            build_gui: true
           - os: ubuntu-latest
             goos: linux
-            goarch: amd64
-            ext: ""
+            build_lib: true
+            build_gui: false # Linux上でWin用GUIをビルドしない（重複回避）
           - os: macos-latest
             goos: darwin
-            goarch: amd64
-            ext: ""
+            build_lib: true
+            build_gui: false
     runs-on: ${{ matrix.os }}
     
-    # Releaseを作成・編集するための権限
     permissions:
       contents: write
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-go@v5
         with:
           go-version: '1.22'
 
-      - name: Build
-        run: go build -o eec${{ matrix.ext }} ./cmd/eec
+      # GUIビルドが必要なWindowsジョブのみ.NETをセットアップ
+      - name: Setup .NET
+        if: ${{ matrix.build_gui }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install Mage
+        uses: magefile/mage-select@v1
+
+      - name: Build with Mage
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: amd64
+          CGO_ENABLED: 1 # ライブラリビルドにはCGOが必須
+        run: |
+          # 1. CLIは全OSで共通
+          mage BuildCLIRelease
+          
+          # 2. ライブラリはそのOSがターゲットの時だけ実行（matrixで制御）
+          if [ "${{ matrix.build_lib }}" = "true" ]; then
+            mage BuildLibRelease
+          fi
+          
+          # 3. GUIはWindowsジョブのみで実行
+          if [ "${{ matrix.build_gui }}" = "true" ]; then
+            mage BuildGUIRelease
+          fi
 
       - name: Release
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
+        if: github.ref_type == 'tag'
         with:
-          files: eec${{ matrix.ext }}
+          # buildディレクトリ内の成果物をすべてアップロード
+          # 拡張子が違うので、上書きされずに各OSのファイルが並びます
+          files: |
+            build/eec
+            build/eec.exe
+            build/eec-deleter
+            build/eec-deleter.exe
+            build/libcengine.so
+            build/libcengine.dll
+            build/libcengine.dylib
+            build/gui/**
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
