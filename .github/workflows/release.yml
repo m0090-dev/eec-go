@@ -11,15 +11,12 @@ jobs:
         include:
           - os: windows-latest
             goos: windows
-            build_lib: true
             build_gui: true
           - os: ubuntu-latest
             goos: linux
-            build_lib: true
-            build_gui: false # Linux上でWin用GUIをビルドしない（重複回避）
+            build_gui: false
           - os: macos-latest
             goos: darwin
-            build_lib: true
             build_gui: false
     runs-on: ${{ matrix.os }}
     
@@ -35,31 +32,36 @@ jobs:
         with:
           go-version: '1.22'
 
-      # GUIビルドが必要なWindowsジョブのみ.NETをセットアップ
+      # Linuxでライブラリをビルドするために必要
+      - name: Install build-essential (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y build-essential
+
       - name: Setup .NET
         if: ${{ matrix.build_gui }}
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
 
+      # 正しいリポジトリ名に修正: magefile/mage-action
       - name: Install Mage
-        uses: magefile/mage-select@v1
+        uses: magefile/mage-action@v2
+        with:
+          install-only: true
 
       - name: Build with Mage
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: amd64
-          CGO_ENABLED: 1 # ライブラリビルドにはCGOが必須
+          CGO_ENABLED: 1
         run: |
-          # 1. CLIは全OSで共通
+          # CLI & Deleter
           mage BuildCLIRelease
           
-          # 2. ライブラリはそのOSがターゲットの時だけ実行（matrixで制御）
-          if [ "${{ matrix.build_lib }}" = "true" ]; then
-            mage BuildLibRelease
-          fi
+          # Shared Library (C-Shared)
+          mage BuildLibRelease
           
-          # 3. GUIはWindowsジョブのみで実行
+          # GUI (Windows Job only)
           if [ "${{ matrix.build_gui }}" = "true" ]; then
             mage BuildGUIRelease
           fi
@@ -68,8 +70,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref_type == 'tag'
         with:
-          # buildディレクトリ内の成果物をすべてアップロード
-          # 拡張子が違うので、上書きされずに各OSのファイルが並びます
           files: |
             build/eec
             build/eec.exe
