@@ -15,11 +15,11 @@ jobs:
             build_lib: true
           - os: ubuntu-latest
             goos: linux
-            build_gui: false
+            build_gui: true
             build_lib: false
           - os: macos-latest
             goos: darwin
-            build_gui: false
+            build_gui: true
             build_lib: false
     runs-on: ${{ matrix.os }}
     
