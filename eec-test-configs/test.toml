@@ -23,7 +23,8 @@ value = [
     "${APP_ROOT}\\exec",
     "C:\\external\\tools"
 ]
+[[envs]]
+TEST = "あいうえお"
 
-[program]
-path = "cmd"
-args = ["/c", "set APP_ && echo %PATH%"]
+[[envs]]
+TEST2 = "${TEST} いえーい"
