@@ -8,13 +8,15 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
-func repl(){
-		//fmt.Printf("version: %s\n",ext.VERSION)
-		e := core.NewEngine(nil,nil)
-		if err := e.Repl();err!=nil{
-			log.Fatal().Err(err).Msg("Failed to info")
-		}
+
+func repl() {
+	//fmt.Printf("version: %s\n",ext.VERSION)
+	e := core.NewEngine(nil, nil)
+	if err := e.Repl(); err != nil {
+		log.Fatal().Err(err).Msg("Failed to info")
+	}
 }
+
 // infoCmd represents the info command
 var replCmd = &cobra.Command{
 	Use:   "repl",

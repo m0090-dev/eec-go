@@ -1,18 +1,29 @@
 [[configs]]
-description = "テスト設定ファイル(TOML)"
+description = "Full Integration Test (TOML)"
+
+[[envs]]
+key = "APP_NAME"
+value = "eec-toml-core"
+
+[[envs]]
+key = "APP_ROOT"
+value = "D:\\work\\${APP_NAME}"
+
+[[envs]]
+key = "HOST_NAME"
+value = "$(hostname)"
+
+[[envs]]
+key = "APP_SUMMARY"
+value = "Host:${HOST_NAME}_Name:${APP_NAME}_OS:$(echo %OS% || uname)"
+
 [[envs]]
 key = "PATH"
 value = [
-	"TESTDIR/TESTO/1919/",
-	"D:\\win\\dev-tools\\mpv\\",
-	"D:\\win\\program\\py\\main-project\\checkitems\\dist",
-	"D:\\win\\dev-tools\\neovim\\app\\bin\\"
+    "${APP_ROOT}\\exec",
+    "C:\\external\\tools"
 ]
 
-[[envs]]
-key = "TEST_ENVS"
-value = [
-	"12345あいえうお",
-	"6789かきくけこ",
-]
-
+[program]
+path = "cmd"
+args = ["/c", "set APP_ && echo %PATH%"]

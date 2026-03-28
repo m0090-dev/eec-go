@@ -1,89 +1,87 @@
 package domain
 
 import (
-	"syscall"
 	"fmt"
-	"os/exec"
-	"runtime"
-	"strings"
-	"path/filepath"
 	"github.com/m0090-dev/eec/internal/ext/interfaces"
 	"github.com/m0090-dev/eec/internal/ext/types"
 	"github.com/m0090-dev/eec/internal/ext/utils/general"
 	gos "os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"syscall"
 )
 
 // ReadOrFallback is the same helper behavior as original core.
-func ReadOrFallback(opts types.RunOptions,os types.OS,logger interfaces.Logger,name string) (types.Config, error) {
+func ReadOrFallback(opts types.RunOptions, os types.OS, logger interfaces.Logger, name string) (types.Config, error) {
 	var cfg types.Config
 	if os.FS.FileExists(name) {
-		return types.ReadConfig(os,logger,name)
+		return types.ReadConfig(os, logger, name)
 	}
-	tagData, err := types.ReadTagData(os,logger,name)
+	tagData, err := types.ReadTagData(os, logger, name)
 	if err != nil {
 		return cfg, err
 	}
 	for _, f := range tagData.ImportConfigFiles {
 		var fcfg types.Config
 		if general.FileExists(f) {
-			fcfg, _ = types.ReadConfig(os,logger,f)
+			fcfg, _ = types.ReadConfig(os, logger, f)
 		} else {
-			fcfg, _ = types.ReadInlineConfig(os,logger,f)
+			fcfg, _ = types.ReadInlineConfig(os, logger, f)
 		}
-		fcfg.ApplyEnvs(os,logger,opts.Separator)
+		fcfg.ApplyEnvs(os, logger, opts.Separator)
 		cfg = fcfg
 	}
 	return cfg, nil
 }
 
 func ReadOrFallbackRecursive(opts types.RunOptions, os types.OS, logger interfaces.Logger, name string) (types.Config, error) {
-    var cfg types.Config
+	var cfg types.Config
 
-    // 1. ファイルとして存在する場合はそのまま読み込む
-    if os.FS.FileExists(name) {
-        return types.ReadConfig(os, logger, name)
-    }
+	// 1. ファイルとして存在する場合はそのまま読み込む
+	if os.FS.FileExists(name) {
+		return types.ReadConfig(os, logger, name)
+	}
 
-    // 2. タグデータとして読み込む
-    tagData, err := types.ReadTagData(os, logger, name)
-    if err != nil {
-        return cfg, err
-    }
+	// 2. タグデータとして読み込む
+	tagData, err := types.ReadTagData(os, logger, name)
+	if err != nil {
+		return cfg, err
+	}
 
-    // 3. import ファイルを再帰的に読み込む
-    for _, f := range tagData.ImportConfigFiles {
-        fcfg, err := ReadOrFallbackRecursive(opts, os, logger, f)
-        if err != nil {
-            logger.Warn().Str("import", f).Err(err).Msg("failed to read import config")
-            continue
-        }
+	// 3. import ファイルを再帰的に読み込む
+	for _, f := range tagData.ImportConfigFiles {
+		fcfg, err := ReadOrFallbackRecursive(opts, os, logger, f)
+		if err != nil {
+			logger.Warn().Str("import", f).Err(err).Msg("failed to read import config")
+			continue
+		}
 
-        // 4. 読み込んだ import の env を適用
-        fcfg.ApplyEnvs(os, logger, opts.Separator)
+		// 4. 読み込んだ import の env を適用
+		fcfg.ApplyEnvs(os, logger, opts.Separator)
 
-        // 5. cfg に集約
-        cfg.Envs = append(cfg.Envs, fcfg.Envs...)
+		// 5. cfg に集約
+		cfg.Envs = append(cfg.Envs, fcfg.Envs...)
 
-        // Program.Path は未設定なら設定
-        if cfg.Program.Path == "" {
-            cfg.Program.Path = fcfg.Program.Path
-        }
-        // Program.Args は append
-        cfg.Program.Args = append(cfg.Program.Args, fcfg.Program.Args...)
+		// Program.Path は未設定なら設定
+		if cfg.Program.Path == "" {
+			cfg.Program.Path = fcfg.Program.Path
+		}
+		// Program.Args は append
+		cfg.Program.Args = append(cfg.Program.Args, fcfg.Program.Args...)
 
-        // Configs も append
-        cfg.Configs = append(cfg.Configs, fcfg.Configs...)
-    }
+		// Configs も append
+		cfg.Configs = append(cfg.Configs, fcfg.Configs...)
+	}
 
-    return cfg, nil
+	return cfg, nil
 }
 
-
-
-func IsProcessRunning(os types.OS,logger interfaces.Logger,name string) (bool, error) {
+func IsProcessRunning(os types.OS, logger interfaces.Logger, name string) (bool, error) {
 	switch runtime.GOOS {
 	case "windows":
-		if !strings.HasSuffix(name,".exe"){
+		if !strings.HasSuffix(name, ".exe") {
 			name += ".exe"
 		}
 		// Windows: tasklist
@@ -112,33 +110,33 @@ func IsProcessRunning(os types.OS,logger interfaces.Logger,name string) (bool, e
 }
 
 func IsPIDRunning(os types.OS, logger interfaces.Logger, pid int) (bool, error) {
-    if pid <= 0 {
-        return false, fmt.Errorf("invalid PID: %d", pid)
-    }
+	if pid <= 0 {
+		return false, fmt.Errorf("invalid PID: %d", pid)
+	}
 
-    proc, err := os.Executor.FindProcess(pid)
-    if err != nil {
-        // プロセスが見つからない場合は false,errorを返す
-        return false, err
-    }
+	proc, err := os.Executor.FindProcess(pid)
+	if err != nil {
+		// プロセスが見つからない場合は false,errorを返す
+		return false, err
+	}
 
-    // プロセスに kill 0 シグナルを送る（Linux/macOS）など、存在確認
-    if runtime.GOOS != "windows" {
-        err = proc.Signal(syscall.Signal(0))
-        if err == nil {
-            return true, nil
-        }
-        if err == syscall.ESRCH {
-            return false, nil
-        }
-        return false, err
-    }
+	// プロセスに kill 0 シグナルを送る（Linux/macOS）など、存在確認
+	if runtime.GOOS != "windows" {
+		err = proc.Signal(syscall.Signal(0))
+		if err == nil {
+			return true, nil
+		}
+		if err == syscall.ESRCH {
+			return false, nil
+		}
+		return false, err
+	}
 
-    // Windows は FindProcess が返れば存在とみなす
-    return true, nil
+	// Windows は FindProcess が返れば存在とみなす
+	return true, nil
 }
 
-func LaunchDeleter(os types.OS,logger interfaces.Logger,opts types.RunOptions) error {
+func LaunchDeleter(os types.OS, logger interfaces.Logger, opts types.RunOptions) error {
 	// ----------------------*/
 	// deleter起動
 	// ----------------------*/
@@ -148,7 +146,7 @@ func LaunchDeleter(os types.OS,logger interfaces.Logger,opts types.RunOptions) e
 		deleterPath = filepath.Join(types.DEFAULT_DELETER_EXECUTE_NAME)
 	}
 
-	running, err := IsProcessRunning(os,logger,types.DEFAULT_DELETER_EXECUTE_NAME)
+	running, err := IsProcessRunning(os, logger, types.DEFAULT_DELETER_EXECUTE_NAME)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to check process")
 		return fmt.Errorf("failed to check process: %w", err)

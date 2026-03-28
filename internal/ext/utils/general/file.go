@@ -3,8 +3,8 @@ package general
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"regexp"
+	"strings"
 )
 
 /*
@@ -21,7 +21,7 @@ func FileExists(path string) bool {
 func FileExt(path string) string {
 	return filepath.Ext(path)
 }
-func FileBase(path string) string{
+func FileBase(path string) string {
 	return filepath.Base(path)
 }
 
@@ -68,6 +68,7 @@ func RemoveExtension(name string) string {
 	}
 	return strings.TrimSuffix(name, ext)
 }
+
 // RemoveExtensions は文字列スライスに対し、各要素から拡張子を取り除いたスライスを返します。
 func RemoveExtensions(names []string) []string {
 	result := make([]string, len(names))
@@ -79,13 +80,12 @@ func RemoveExtensions(names []string) []string {
 
 // BaseSlice は文字列スライスの各要素からファイル名部分だけを抽出します。
 func BaseSlice(paths []string) []string {
-    res := make([]string, len(paths))
-    for i, p := range paths {
-        res[i] = filepath.Base(p)
-    }
-    return res
+	res := make([]string, len(paths))
+	for i, p := range paths {
+		res[i] = filepath.Base(p)
+	}
+	return res
 }
-
 
 // ---------------------------
 // 指定ディレクトリ内の特定拡張子ファイルを取得する関数
@@ -107,4 +107,3 @@ func GetFilesWithExtension(dir string, ext string) ([]string, error) {
 
 	return files, nil
 }
-
