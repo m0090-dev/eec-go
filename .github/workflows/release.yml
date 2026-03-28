@@ -12,12 +12,15 @@ jobs:
           - os: windows-latest
             goos: windows
             build_gui: true
+            build_lib: true  # Windowsのみライブラリをビルド
           - os: ubuntu-latest
             goos: linux
             build_gui: false
+            build_lib: false
           - os: macos-latest
             goos: darwin
             build_gui: false
+            build_lib: false
     runs-on: ${{ matrix.os }}
     
     permissions:
@@ -32,7 +35,10 @@ jobs:
         with:
           go-version: '1.22'
 
-      # Linuxでライブラリをビルドするために必要
+      # 外部Actionの404エラーを回避するため、Goで直接Mageをインストール
+      - name: Install Mage
+        run: go install github.com/magefile/mage@latest
+
       - name: Install build-essential (Linux)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y build-essential
@@ -43,25 +49,25 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      # 正しいリポジトリ名に修正: magefile/mage-action
-      - name: Install Mage
-        uses: magefile/mage-action@v2
-        with:
-          install-only: true
-
       - name: Build with Mage
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: amd64
           CGO_ENABLED: 1
+        shell: bash
         run: |
-          # CLI & Deleter
+          # インストールしたMageにパスを通す
+          export PATH=$PATH:$(go env GOPATH)/bin
+          
+          # CLIは全OSでビルド
           mage BuildCLIRelease
           
-          # Shared Library (C-Shared)
-          mage BuildLibRelease
+          # ライブラリはWindowsジョブのみ実行
+          if [ "${{ matrix.build_lib }}" = "true" ]; then
+            mage BuildLibRelease
+          fi
           
-          # GUI (Windows Job only)
+          # GUIはWindowsジョブのみ実行
           if [ "${{ matrix.build_gui }}" = "true" ]; then
             mage BuildGUIRelease
           fi
@@ -70,6 +76,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref_type == 'tag'
         with:
+          # 各OSで生成されたバイナリを収集。存在しないファイルは無視されます。
           files: |
             build/eec
             build/eec.exe
