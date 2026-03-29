@@ -3,31 +3,28 @@ configs:
 
 envs:
   # 1. Base Project Variable
-  - key: "APP_NAME"
-    value: "eec-standard-v1"
+  - APP_NAME: "eec-standard-v1"
 
   # 2. Sequential Expansion (Issue #26)
-  - key: "APP_ROOT"
-    value: "C:\\temp\\${APP_NAME}"
+  - APP_ROOT: "C:\\temp\\${APP_NAME}"
 
   # 3. Command Expansion
-  - key: "CURRENT_USER"
-    value: "$(whoami)"
+  - CURRENT_USER: "$(whoami)"
 
   # 4. Complex Composition
-  - key: "APP_IDENTIFIER"
-    value: "User:${CURRENT_USER}_Project:${APP_NAME}_Time:$(date /t)"
+  - APP_IDENTIFIER: "User:${CURRENT_USER}_Project:${APP_NAME}_Time:$(date /t)"
 
   # 5. PATH Auto-Merge (Using OS default separator)
-  - key: "PATH"
-    value:
+  - PATH:
       - "${APP_ROOT}\\bin"
       - "${APP_ROOT}\\tools"
       - "$(coreutils pwd 2>$null || cd)"
-  - TEST: "aiueo"
+
+  # 6. Simple test variable
+  - TEST: "aiueo $(date /t) ${CURRENT_USER}"
 
 program:
   path: "pwsh"
-  args: 
+  args:
     - "-Command"
     - "Write-Host '--- Audit Start ---'; gci env:APP_*; gci env:PATH; gci env:TEST; Write-Host '--- Audit End ---'"
