@@ -434,9 +434,15 @@ func (c *Config) BuildEnvs(os OS, logger interfaces.Logger, baseEnv []string, se
 
 	// baseEnv (既存の環境変数) を map に変換
 	for _, e := range baseEnv {
+		if strings.HasPrefix(e, "=") {
+			continue
+		}
 		parts := strings.SplitN(e, "=", 2)
 		if len(parts) == 2 {
 			key := strings.ToUpper(parts[0])
+			if key == "" {
+				continue
+			}
 			envMap[key] = append(envMap[key], parts[1])
 		}
 	}
