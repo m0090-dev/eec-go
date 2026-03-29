@@ -8,14 +8,14 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/m0090-dev/eec/internal/ext/utils/general"
 	"github.com/m0090-dev/eec/internal/ext/interfaces"
+	"github.com/m0090-dev/eec/internal/ext/utils/general"
 )
 
 type TagData struct {
-	ConfigFile  string
-	Program     string
-	ProgramArgs []string
+	ConfigFile        string
+	Program           string
+	ProgramArgs       []string
 	ImportConfigFiles []string
 	//Description string TODO: 要追加検討
 }
@@ -23,7 +23,7 @@ type TagData struct {
 // ---------------------------
 // TagData バイナリ保存処理
 // ---------------------------
-func (t *TagData) Write(os OS,logger interfaces.Logger,tagName string) error {
+func (t *TagData) Write(os OS, logger interfaces.Logger, tagName string) error {
 	homeDir, err := os.Env.UserHomeDir()
 	if homeDir == "" {
 		return err
@@ -64,10 +64,11 @@ func (t *TagData) Write(os OS,logger interfaces.Logger,tagName string) error {
 
 	return nil
 }
+
 // --------------------------
 // 読み取り処理
 // --------------------------
-func ReadTagData(os OS,logger interfaces.Logger,tagName string) (TagData, error) {
+func ReadTagData(os OS, logger interfaces.Logger, tagName string) (TagData, error) {
 	homeDir, _ := os.Env.UserHomeDir()
 	if homeDir == "" {
 		return TagData{}, fmt.Errorf(fmt.Sprintf("%s not set", homeDir))
@@ -91,7 +92,7 @@ func ReadTagData(os OS,logger interfaces.Logger,tagName string) (TagData, error)
 	if data.ProgramArgs, err = general.ReadStringSlice(buf); err != nil {
 		return TagData{}, err
 	}
-	
+
 	if data.ImportConfigFiles, err = general.ReadStringSlice(buf); err != nil {
 		return TagData{}, err
 	}
@@ -105,4 +106,3 @@ func ReadTagData(os OS,logger interfaces.Logger,tagName string) (TagData, error)
 
 	return data, nil
 }
-

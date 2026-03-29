@@ -5,17 +5,17 @@ package subcmd
 
 import (
 	"fmt"
-	"github.com/spf13/cobra"
 	"github.com/m0090-dev/eec/internal/core"
+	"github.com/spf13/cobra"
 )
 
-func genScript(){
-		//domain.GenUtilsScript()
-		//domain.GenWrapScript()
-		e := core.NewEngine(nil,nil)
-		if err := e.GenScript();err != nil {
-			e.Logger.Fatal().Err(err).Msg("Failed to gen script")
-		}
+func genScript() {
+	//domain.GenUtilsScript()
+	//domain.GenWrapScript()
+	e := core.NewEngine(nil, nil)
+	if err := e.GenScript(); err != nil {
+		e.Logger.Fatal().Err(err).Msg("Failed to gen script")
+	}
 }
 
 // ---------------------------
@@ -63,8 +63,6 @@ Effect:
 		genScript()
 	},
 }
-
-
 
 func init() {
 	rootCmd.AddCommand(genCmd)

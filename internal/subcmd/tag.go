@@ -15,45 +15,42 @@ import (
 // ---------------------------
 var (
 	//tagNameTagFlag     string
-	configFileTagFlag  string
-	programTagFlag     string
-	programArgsTagFlag []string
+	configFileTagFlag        string
+	programTagFlag           string
+	programArgsTagFlag       []string
 	importConfigFilesTagFlag []string
 )
 
-func add(name string){
-	e := core.NewEngine(nil,nil)
+func add(name string) {
+	e := core.NewEngine(nil, nil)
 	data := types.TagData{
-		ConfigFile: configFileTagFlag,
-		Program: programTagFlag,
-		ProgramArgs: programArgsTagFlag,
+		ConfigFile:        configFileTagFlag,
+		Program:           programTagFlag,
+		ProgramArgs:       programArgsTagFlag,
 		ImportConfigFiles: importConfigFilesTagFlag,
 	}
-	if err:=e.TagAdd(name,data);err!=nil{
+	if err := e.TagAdd(name, data); err != nil {
 		e.Logger.Fatal().Err(err).Msg("Failed to tag add")
 	}
 }
-func read(name string){
-	e := core.NewEngine(nil,nil)
-	if err:=e.TagRead(name);err != nil{
+func read(name string) {
+	e := core.NewEngine(nil, nil)
+	if err := e.TagRead(name); err != nil {
 		e.Logger.Fatal().Err(err).Msg("Failed to tag read")
 	}
 }
-func list(){
-	e := core.NewEngine(nil,nil)
-	if err:=e.TagList();err!=nil{
+func list() {
+	e := core.NewEngine(nil, nil)
+	if err := e.TagList(); err != nil {
 		e.Logger.Fatal().Err(err).Msg("Failed to tag list")
 	}
 }
-func remove(name string){
-	e := core.NewEngine(nil,nil)
-	if err:=e.TagRemove(name);err!=nil{
+func remove(name string) {
+	e := core.NewEngine(nil, nil)
+	if err := e.TagRemove(name); err != nil {
 		e.Logger.Fatal().Err(err).Msg("Failed tp tag remove")
 	}
 }
-
-
-
 
 // ---------------------------
 // Cobra コマンド定義
@@ -68,7 +65,7 @@ var addTagCmd = &cobra.Command{
 	Short: "Add a new tag",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		add(args[0])	
+		add(args[0])
 	},
 }
 
@@ -77,14 +74,14 @@ var readTagCmd = &cobra.Command{
 	Short: "Read a tag",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		read(args[0])	
+		read(args[0])
 	},
 }
 var listTagCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List a tags",
 	Run: func(cmd *cobra.Command, args []string) {
-		list()	
+		list()
 	},
 }
 
@@ -99,10 +96,10 @@ var removeTagCmd = &cobra.Command{
 
 func init() {
 	//addTagCmd.Flags().StringVar(&tagNameTagFlag, "name", "", "Tag name")
-	addTagCmd.Flags().StringVarP(&configFileTagFlag, "config-file","c", "", "Config file")
-	addTagCmd.Flags().StringVarP(&programTagFlag, "program","p", "", "Program name")
-	addTagCmd.Flags().StringSliceVarP(&programArgsTagFlag, "program-args","a", []string{}, "Program args")
-	addTagCmd.Flags().StringSliceVarP(&importConfigFilesTagFlag, "import","i", []string{}, "Import config files")
+	addTagCmd.Flags().StringVarP(&configFileTagFlag, "config-file", "c", "", "Config file")
+	addTagCmd.Flags().StringVarP(&programTagFlag, "program", "p", "", "Program name")
+	addTagCmd.Flags().StringSliceVarP(&programArgsTagFlag, "program-args", "a", []string{}, "Program args")
+	addTagCmd.Flags().StringSliceVarP(&importConfigFilesTagFlag, "import", "i", []string{}, "Import config files")
 
 	tagCmd.AddCommand(addTagCmd)
 	tagCmd.AddCommand(readTagCmd)
