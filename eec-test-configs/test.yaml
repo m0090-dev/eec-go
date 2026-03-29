@@ -1,30 +1,49 @@
 configs:
-  - description: "Full Integration Test (YAML)"
+  - description: "Map Order Stress Test (YAML)"
 
 envs:
-  # 1. Base Project Variable
-  - APP_NAME: "eec-standard-v1"
+  # 1. 依存の連鎖 (Chain of 10)
+  STEP_01: "Alpha"
+  STEP_02: "${STEP_01}-Beta"
+  STEP_03: "${STEP_02}-Gamma"
+  STEP_04: "${STEP_03}-Delta"
+  STEP_05: "${STEP_04}-Epsilon"
+  STEP_06: "${STEP_05}-Zeta"
+  STEP_07: "${STEP_06}-Eta"
+  STEP_08: "${STEP_07}-Theta"
+  STEP_09: "${STEP_08}-Iota"
+  STEP_10: "${STEP_09}-Kappa"
 
-  # 2. Sequential Expansion (Issue #26)
-  - APP_ROOT: "C:\\temp\\${APP_NAME}"
+  # 2. 大量の独立変数 (バケット分割を促す)
+  DUMMY_01: "data"
+  DUMMY_02: "data"
+  DUMMY_03: "data"
+  DUMMY_04: "data"
+  DUMMY_05: "data"
+  DUMMY_06: "data"
+  DUMMY_07: "data"
+  DUMMY_08: "data"
+  DUMMY_09: "data"
+  DUMMY_10: "data"
+  DUMMY_11: "data"
+  DUMMY_12: "data"
+  DUMMY_13: "data"
+  DUMMY_14: "data"
+  DUMMY_15: "data"
+  DUMMY_16: "data"
+  DUMMY_17: "data"
+  DUMMY_18: "data"
+  DUMMY_19: "data"
+  DUMMY_20: "data"
 
-  # 3. Command Expansion
-  - CURRENT_USER: "$(whoami)"
-
-  # 4. Complex Composition
-  - APP_IDENTIFIER: "User:${CURRENT_USER}_Project:${APP_NAME}_Time:$(date /t)"
-
-  # 5. PATH Auto-Merge (Using OS default separator)
-  - PATH:
-      - "${APP_ROOT}\\bin"
-      - "${APP_ROOT}\\tools"
-      - "$(coreutils pwd 2>$null || cd)"
-
-  # 6. Simple test variable
-  - TEST: "aiueo $(date /t) ${CURRENT_USER}"
+  # 3. 最後に依存関係のある PATH
+  FINAL_CHECK: "Result:${STEP_10}"
+  PATH:
+    - "C:\\test\\${STEP_01}"
+    - "D:\\work\\${STEP_10}"
 
 program:
   path: "pwsh"
   args:
     - "-Command"
-    - "Write-Host '--- Audit Start ---'; gci env:APP_*; gci env:PATH; gci env:TEST; Write-Host '--- Audit End ---'"
+    - "gci env:STEP_*; gci env:FINAL_CHECK; gci env:PATH"

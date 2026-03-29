@@ -1,24 +1,38 @@
 [[configs]]
-description = "Full Integration Test (TOML)"
+description = "Topological Sort Chaos Test"
 
-[[envs]]
-APP_NAME = "eec-toml-core"
+[envs]
+# 1. 依存の連鎖を「完全に逆順」で記述
+# STEP_10 が一番上にあるため、普通にループを回すと STEP_09 が見つからず失敗するはず
+STEP_10 = "${STEP_09}-Kappa"
+STEP_09 = "${STEP_08}-Iota"
+STEP_08 = "${STEP_07}-Theta"
+STEP_07 = "${STEP_06}-Eta"
+STEP_06 = "${STEP_05}-Zeta"
+STEP_05 = "${STEP_04}-Epsilon"
+STEP_04 = "${STEP_03}-Delta"
+STEP_03 = "${STEP_02}-Gamma"
+STEP_02 = "${STEP_01}-Beta"
+STEP_01 = "Alpha"
 
-[[envs]]
-APP_ROOT = "D:\\work\\${APP_NAME}"
+# 2. 依存関係の間に無関係なダミーをバラ撒く
+DUMMY_FIRST = "Start"
+DUMMY_01 = "data"
+DUMMY_02 = "data"
+DUMMY_MIDDLE = "Middle"
+DUMMY_03 = "data"
+DUMMY_04 = "data"
+DUMMY_LAST = "End"
 
-[[envs]]
-HOST_NAME = "$(hostname)"
+# 3. 最後に評価されるべき項目を中間に置く
+FINAL_CHECK = "Result:${STEP_10}"
 
-[[envs]]
-APP_SUMMARY = "Host:${HOST_NAME}_Name:${APP_NAME}_OS:$(echo %OS% || uname)"
-
-[[envs]]
+# 4. PATH も途中に依存を混ぜる
 PATH = [
-  "${APP_ROOT}\\exec",
-  "C:\\external\\tools"
+    "D:\\work\\${STEP_10}",
+    "C:\\test\\${STEP_01}"
 ]
 
 [program]
-path = "cmd"
-args = ["/c", "set APP_ && echo %PATH%"]
+path = "pwsh"
+args = ["-Command", "gci env:STEP_* | Sort-Object Name; gci env:FINAL_CHECK; gci env:PATH"]
