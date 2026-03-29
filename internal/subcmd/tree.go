@@ -1,6 +1,5 @@
 /*
 Copyright © 2025 NAME HERE <EMAIL ADDRESS>
-
 */
 package subcmd
 
@@ -10,10 +9,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-
-func tree(args[]string){
-	e := core.NewEngine(nil,nil)
-	if err := e.Tree(args[0]);err != nil {
+func tree(args []string) {
+	e := core.NewEngine(nil, nil)
+	if err := e.Tree(args[0]); err != nil {
 		e.Logger.Fatal().Err(err).Msg("Failed to tree")
 	}
 
@@ -29,7 +27,7 @@ and usage of using your command. For example:
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
-	Args:  cobra.ExactArgs(1),
+	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		tree(args)
 	},

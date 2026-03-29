@@ -18,7 +18,8 @@ import (
 
 type Config struct {
 	Configs []MetaConfig `toml:"configs" yaml:"configs" json:"configs"`
-	Envs    []Environ    `toml:"envs" yaml:"envs" json:"envs"`
+	RawEnvs interface{}  `toml:"envs" yaml:"envs" json:"envs"`
+	Envs    []Environ    `toml:"-" yaml:"-" json:"-"`
 	Program ProgramData  `toml:"program" yaml:"program" json:"program"`
 }
 type MetaConfig struct {
@@ -34,6 +35,55 @@ type Environ struct {
 	Value interface{} `toml:"value" yaml:"value" json:"value"`
 }
 
+func (c *Config) NormalizeEnvs(logger interfaces.Logger) {
+	if c.RawEnvs == nil {
+		return
+	}
+
+	switch data := c.RawEnvs.(type) {
+	case []interface{}:
+		// 【パターン1：リスト形式】
+		// 1. [ {key: "K", value: "V"}, ... ] (従来形式)
+		// 2. [ {TEST: "aiueo"}, ... ] (リスト内直接定義)
+		for _, item := range data {
+			m, ok := item.(map[string]interface{})
+			if !ok {
+				continue
+			}
+
+			// A. 従来形式のチェック: - key: "NAME", value: "VAL"
+			if key, ok := m["key"].(string); ok && key != "" {
+				val := m["value"]
+				c.Envs = append(c.Envs, Environ{Key: key, Value: val})
+				continue
+			}
+
+			// B. リスト内直接定義のチェック: - TEST: "aiueo"
+			// map の中身をスキャンして最初の 1 つを取り出す
+			for k, v := range m {
+				if k != "" {
+					c.Envs = append(c.Envs, Environ{Key: k, Value: v})
+				}
+				break // 1つの要素につき1変数を想定
+			}
+		}
+
+	case map[string]interface{}:
+		// 【パターン2：マップ形式】 { "VARIABLE": "VALUE", "PATH": ["A", "B"] }
+		for k, v := range data {
+			c.Envs = append(c.Envs, Environ{Key: k, Value: v})
+		}
+
+	case map[interface{}]interface{}:
+		// YAMLパーサーの型互換性ケア
+		for k, v := range data {
+			if strKey, ok := k.(string); ok {
+				c.Envs = append(c.Envs, Environ{Key: strKey, Value: v})
+			}
+		}
+	}
+}
+
 func ReadConfig(os OS, logger interfaces.Logger, fileName string) (Config, error) {
 	ext := general.FileExt(fileName)
 	if ext == ".toml" {
@@ -42,7 +92,7 @@ func ReadConfig(os OS, logger interfaces.Logger, fileName string) (Config, error
 		return ReadYaml(os, logger, fileName)
 	} else if ext == ".json" {
 		return ReadJson(os, logger, fileName)
-	} else if ext == ".env"{
+	} else if ext == ".env" {
 		return ReadEnv(os, logger, fileName)
 	}
 	return Config{}, nil
@@ -67,6 +117,9 @@ func ReadJson(os OS, logger interfaces.Logger, fileName string) (Config, error) 
 
 	var config Config
 	err = json.Unmarshal(data, &config)
+	if err == nil {
+		config.NormalizeEnvs(logger)
+	}
 	return config, err
 
 }
@@ -78,6 +131,9 @@ func ReadYaml(os OS, logger interfaces.Logger, fileName string) (Config, error) 
 
 	var config Config
 	err = yaml.Unmarshal(data, &config)
+	if err == nil {
+		config.NormalizeEnvs(logger)
+	}
 	return config, err
 
 }
@@ -90,27 +146,30 @@ func ReadToml(os OS, logger interfaces.Logger, fileName string) (Config, error) 
 
 	var config Config
 	err = toml.Unmarshal(data, &config)
+	if err == nil {
+		config.NormalizeEnvs(logger)
+	}
 	return config, err
 }
 
 func ReadEnv(os OS, logger interfaces.Logger, fileName string) (Config, error) {
-    var config Config
-    var envMap map[string]string
-    var err error
-    envMap, err = godotenv.Read(fileName)
-    if err != nil {
-        logger.Fatal().Err(err).Msg("Error reading .env file")
-    }
+	var config Config
+	var envMap map[string]string
+	var err error
+	envMap, err = godotenv.Read(fileName)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Error reading .env file")
+	}
 
-    config.Envs = make([]Environ, 0, len(envMap))
-    for key, value := range envMap {
-        config.Envs = append(config.Envs, Environ{
-            Key:   key,
-            Value: value,
-        })
-    }
+	config.Envs = make([]Environ, 0, len(envMap))
+	for key, value := range envMap {
+		config.Envs = append(config.Envs, Environ{
+			Key:   key,
+			Value: value,
+		})
+	}
 
-    return config, nil
+	return config, nil
 }
 
 func ReadInlineToml(os OS, logger interfaces.Logger, tomlData string) (Config, error) {
@@ -164,8 +223,136 @@ func ReadInlineYaml(os OS, logger interfaces.Logger, yamlData string) (Config, e
 
 }
 
-func (c *Config) ApplyEnvs(os OS, logger interfaces.Logger, separator string) error {
+/*func (c *Config) ApplyEnvs(os OS, logger interfaces.Logger, separator string) error {*/
 
+/*// まず Description を必ず出力*/
+/*for _, cfgs := range c.Configs {*/
+/*if cfgs.Description != "" {*/
+/*logger.Debug().Str("Config Description", cfgs.Description).Msg("")*/
+/*}*/
+/*}*/
+
+/*// セパレータ決定*/
+/*if separator == "" { // CLI未指定の場合のみ Config の Separator を使う*/
+/*for _, cfgs := range c.Configs {*/
+/*if cfgs.Separator != "" {*/
+/*separator = cfgs.Separator*/
+/*break*/
+/*}*/
+/*}*/
+/*}*/
+
+/*// CLIでもConfigでも未指定なら OS デフォルト*/
+/*if separator == "" {*/
+/*if runtime.GOOS == "windows" {*/
+/*separator = ";"*/
+/*} else {*/
+/*separator = ":"*/
+/*}*/
+/*}*/
+
+/*// 現在の環境を map に変換して重複チェック用*/
+/*// key: ENV 名（大文字化）*/
+/*// value: 値ごとの set*/
+/*envMap := make(map[string]map[string]struct{})*/
+/*for _, e := range os.Env.Environ() {*/
+/*parts := strings.SplitN(e, "=", 2)*/
+/*if len(parts) != 2 {*/
+/*continue*/
+/*}*/
+/*key := strings.ToUpper(parts[0])*/
+/*if _, ok := envMap[key]; !ok {*/
+/*envMap[key] = make(map[string]struct{})*/
+/*}*/
+
+/*// 値を separator で分割して格納*/
+/*for _, part := range strings.Split(parts[1], separator) {*/
+/*part = strings.TrimSpace(part)*/
+/*if part != "" {*/
+/*envMap[key][part] = struct{}{}*/
+/*}*/
+/*}*/
+/*}*/
+
+/*for _, env := range c.Envs {*/
+/*key := strings.ToUpper(env.Key)*/
+/*if key == "" {*/
+/*logger.Warn().Interface("env", env).Msg("envのキーが空です")*/
+/*continue*/
+/*}*/
+
+/*[> // string でも []interface{} でも統一して処理<]*/
+/*[>var strVals []string<]*/
+/*[>switch val := env.Value.(type) {<]*/
+/*[>case string:<]*/
+/*[>strVals = []string{general.ExpandEnvAndCommands(val,envMap)}<]*/
+/*[>case []interface{}:<]*/
+/*[>for _, v := range val {<]*/
+/*[>if s, ok := v.(string); ok {<]*/
+/*[>strVals = append(strVals, general.ExpandEnvAndCommands(s,envMap))<]*/
+/*[>}<]*/
+/*[>}<]*/
+/*[>default:<]*/
+/*[>logger.Warn().Str("key", key).Interface("value", env.Value).Msg("envの値の型が未対応")<]*/
+/*[>continue<]*/
+/*[>}<]*/
+
+/*// 1. まず、未展開のまま値を一時的に収集する*/
+/*var rawVals []string*/
+/*switch val := env.Value.(type) {*/
+/*case string:*/
+/*rawVals = []string{val}*/
+/*case []interface{}:*/
+/*for _, v := range val {*/
+/*if s, ok := v.(string); ok {*/
+/*rawVals = append(rawVals, s)*/
+/*}*/
+/*}*/
+/*default:*/
+/*logger.Warn().Str("key", key).Interface("value", env.Value).Msg("envの値の型が未対応")*/
+/*continue*/
+/*}*/
+/*// 重複チェック用 map 初期化*/
+/*if _, ok := envMap[key]; !ok {*/
+/*envMap[key] = make(map[string]struct{})*/
+/*}*/
+
+/*// 値を separator で分割して追加*/
+/*[> for _, v := range strVals {<]*/
+/*[>for _, part := range strings.Split(v, separator) {<]*/
+/*[>part = strings.TrimSpace(part)<]*/
+/*[>if part != "" {<]*/
+/*[>envMap[key][part] = struct{}{}<]*/
+/*[>}<]*/
+/*[>}<]*/
+/*[>}<]*/
+/*for _, rawV := range rawVals {*/
+/*// ここで最新の envMap を使って展開*/
+/*// 直前のループで登録された変数がここに含まれるようになる (Issue #26)*/
+/*expanded := general.ExpandEnvAndCommands(rawV, envMap)*/
+
+/*// 展開後の値を separator で分割して map に格納*/
+/*for _, part := range strings.Split(expanded, separator) {*/
+/*part = strings.TrimSpace(part)*/
+/*if part != "" {*/
+/*envMap[key][part] = struct{}{}*/
+/*}*/
+/*}*/
+/*}*/
+
+/*// マップから文字列スライスに変換してセット*/
+/*newVals := make([]string, 0, len(envMap[key]))*/
+/*for val := range envMap[key] {*/
+/*newVals = append(newVals, val)*/
+/*}*/
+/*os.Env.Setenv(key, strings.Join(newVals, separator))*/
+/*}*/
+
+/*return nil*/
+/*}*/
+
+func (c *Config) ApplyEnvs(os OS, logger interfaces.Logger, separator string) error {
+	logger.Debug().Int("count", len(c.Envs)).Msg("ApplyEnvs CALLED")
 	// まず Description を必ず出力
 	for _, cfgs := range c.Configs {
 		if cfgs.Description != "" {
@@ -193,8 +380,7 @@ func (c *Config) ApplyEnvs(os OS, logger interfaces.Logger, separator string) er
 	}
 
 	// 現在の環境を map に変換して重複チェック用
-	// key: ENV 名（大文字化）
-	// value: 値ごとの set
+	// key: ENV 名（大文字化）, value: 値ごとの set
 	envMap := make(map[string]map[string]struct{})
 	for _, e := range os.Env.Environ() {
 		parts := strings.SplitN(e, "=", 2)
@@ -222,15 +408,15 @@ func (c *Config) ApplyEnvs(os OS, logger interfaces.Logger, separator string) er
 			continue
 		}
 
-		// string でも []interface{} でも統一して処理
-		var strVals []string
-		switch val := env.Value.(type) {
+		// 1. まず「生の値」をスライスとして取り出す (展開はまだしない)
+		var rawStrings []string
+		switch v := env.Value.(type) {
 		case string:
-			strVals = []string{general.ExpandEnvVariables(val)}
+			rawStrings = []string{v}
 		case []interface{}:
-			for _, v := range val {
-				if s, ok := v.(string); ok {
-					strVals = append(strVals, general.ExpandEnvVariables(s))
+			for _, item := range v {
+				if s, ok := item.(string); ok {
+					rawStrings = append(rawStrings, s)
 				}
 			}
 		default:
@@ -238,14 +424,22 @@ func (c *Config) ApplyEnvs(os OS, logger interfaces.Logger, separator string) er
 			continue
 		}
 
-		// 重複チェック用 map 初期化
+		// 2. 展開処理: 直前までのループで更新された envMap を使って展開する
+		// これにより、同一ファイル内の上の行で定義した変数が参照可能になる (Issue #26 解決)
+		var expandedVals []string
+		for _, raw := range rawStrings {
+			// general.ExpandEnvAndCommands を使用 (envMap を渡す)
+			expanded := general.ExpandEnvAndCommands(raw, envMap)
+			expandedVals = append(expandedVals, expanded)
+		}
+
+		// 3. 重複チェック用 map への登録
 		if _, ok := envMap[key]; !ok {
 			envMap[key] = make(map[string]struct{})
 		}
-
-		// 値を separator で分割して追加
-		for _, v := range strVals {
-			for _, part := range strings.Split(v, separator) {
+		for _, ev := range expandedVals {
+			// 展開後の文字列にセパレータが含まれている可能性(PATH等)を考慮して分割
+			for _, part := range strings.Split(ev, separator) {
 				part = strings.TrimSpace(part)
 				if part != "" {
 					envMap[key][part] = struct{}{}
@@ -253,12 +447,13 @@ func (c *Config) ApplyEnvs(os OS, logger interfaces.Logger, separator string) er
 			}
 		}
 
-		// マップから文字列スライスに変換してセット
-		newVals := make([]string, 0, len(envMap[key]))
-		for val := range envMap[key] {
-			newVals = append(newVals, val)
+		// 4. マップから最新の状態を取り出し、OS の環境変数に即時反映
+		// これにより、次のループの展開処理や $(cmd) 実行時にこの値が使えるようになる
+		finalParts := make([]string, 0, len(envMap[key]))
+		for p := range envMap[key] {
+			finalParts = append(finalParts, p)
 		}
-		os.Env.Setenv(key, strings.Join(newVals, separator))
+		os.Env.Setenv(key, strings.Join(finalParts, separator))
 	}
 
 	return nil
@@ -266,15 +461,13 @@ func (c *Config) ApplyEnvs(os OS, logger interfaces.Logger, separator string) er
 
 func (c *Config) BuildEnvs(os OS, logger interfaces.Logger, baseEnv []string, separator string) []string {
 
-	// まず Description を必ず出力
+	// Description 出力とセパレータ決定ロジック（中略）
 	for _, cfgs := range c.Configs {
 		if cfgs.Description != "" {
 			logger.Debug().Str("Config Description", cfgs.Description).Msg("")
 		}
 	}
-
-	// セパレータ決定
-	if separator == "" { // CLI未指定の場合のみ Config の Separator を使う
+	if separator == "" {
 		for _, cfgs := range c.Configs {
 			if cfgs.Separator != "" {
 				separator = cfgs.Separator
@@ -282,8 +475,6 @@ func (c *Config) BuildEnvs(os OS, logger interfaces.Logger, baseEnv []string, se
 			}
 		}
 	}
-
-	// CLIでもConfigでも未指定なら OS デフォルト
 	if separator == "" {
 		if runtime.GOOS == "windows" {
 			separator = ";"
@@ -294,7 +485,7 @@ func (c *Config) BuildEnvs(os OS, logger interfaces.Logger, baseEnv []string, se
 
 	envMap := make(map[string][]string)
 
-	// baseEnv を map に変換（複数同キーをスライスに格納）
+	// baseEnv (既存の環境変数) を map に変換
 	for _, e := range baseEnv {
 		parts := strings.SplitN(e, "=", 2)
 		if len(parts) == 2 {
@@ -303,7 +494,7 @@ func (c *Config) BuildEnvs(os OS, logger interfaces.Logger, baseEnv []string, se
 		}
 	}
 
-	// c.Envs をマージ（重複排除）
+	// c.Envs (設定ファイルの envs) を処理
 	for _, env := range c.Envs {
 		if env.Key == "" {
 			logger.Warn().Interface("env", env).Msg("envのキーが空です")
@@ -311,14 +502,15 @@ func (c *Config) BuildEnvs(os OS, logger interfaces.Logger, baseEnv []string, se
 		}
 		keyUpper := strings.ToUpper(env.Key)
 
-		var values []string
+		// 1. まず「生の値 (raw)」をスライスとして取り出す
+		var rawStrings []string
 		switch val := env.Value.(type) {
 		case string:
-			values = []string{general.ExpandEnvVariables(val)}
+			rawStrings = []string{val}
 		case []interface{}:
 			for _, v := range val {
 				if s, ok := v.(string); ok {
-					values = append(values, general.ExpandEnvVariables(s))
+					rawStrings = append(rawStrings, s)
 				}
 			}
 		default:
@@ -326,56 +518,49 @@ func (c *Config) BuildEnvs(os OS, logger interfaces.Logger, baseEnv []string, se
 			continue
 		}
 
-		/*// 既存値に追加（重複チェック）*/
-		/*existing := make(map[string]struct{})*/
-		/*for _, v := range envMap[keyUpper] {*/
-		/*existing[v] = struct{}{}*/
-		/*}*/
+		// 2. 重要：ここまでの envMap（上の行の変数が反映済み）を使って展開する
+		var expandedValues []string
+		for _, raw := range rawStrings {
+			// この時点の envMap には直前のループの結果が入っている
+			expanded := general.ExpandEnvAndCommands(raw, envMap)
+			expandedValues = append(expandedValues, expanded)
+		}
 
-		/*for _, v := range values {*/
-		/*if _, ok := existing[v]; !ok {*/
-		/*envMap[keyUpper] = append(envMap[keyUpper], v)*/
-		/*existing[v] = struct{}{}*/
-		/*}*/
-		/*}*/
-
-		// 既存値と新規値をマージして重複排除
+		// 3. 既存値と展開後の新規値をマージして重複排除
 		existing := make(map[string]struct{})
 		merged := []string{}
 
-		// 既存値
+		// a) 既存の値を登録
 		for _, v := range envMap[keyUpper] {
 			for _, part := range strings.Split(v, separator) {
 				part = strings.TrimSpace(part)
-				if part == "" {
-					continue
-				}
-				if _, ok := existing[part]; !ok {
-					existing[part] = struct{}{}
-					merged = append(merged, part)
+				if part != "" {
+					if _, ok := existing[part]; !ok {
+						existing[part] = struct{}{}
+						merged = append(merged, part)
+					}
 				}
 			}
 		}
 
-		// 新しい値
-		for _, v := range values {
+		// b) 展開された新しい値を登録
+		for _, v := range expandedValues {
 			for _, part := range strings.Split(v, separator) {
 				part = strings.TrimSpace(part)
-				if part == "" {
-					continue
-				}
-				if _, ok := existing[part]; !ok {
-					existing[part] = struct{}{}
-					merged = append(merged, part)
+				if part != "" {
+					if _, ok := existing[part]; !ok {
+						existing[part] = struct{}{}
+						merged = append(merged, part)
+					}
 				}
 			}
 		}
 
+		// 4. 重要：envMap を即座に更新 (これで次のループの展開で参照可能になる)
 		envMap[keyUpper] = merged
-
 	}
 
-	// map を []string に変換
+	// map を []string に変換して返す
 	newEnv := make([]string, 0, len(envMap))
 	for k, v := range envMap {
 		joined := strings.Join(v, separator)

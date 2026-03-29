@@ -37,13 +37,12 @@ func run() {
 		HideWindow:        HideWindowRunFlag,
 		DeleterPath:       deleterPathRunFlag,
 		DeleterHideWindow: DeleterHideWindowRunFlag,
-		Separator: SeparatorRunFlag,
+		Separator:         SeparatorRunFlag,
 	}
 	if err := e.Run(context.Background(), opts); err != nil {
 		e.Logger.Fatal().Err(err).Msg("Failed to run")
 	}
 }
-
 
 // ---------------------------
 // Cobra Command Definition
@@ -72,21 +71,20 @@ in clean, reproducible environments.`,
 }
 
 func init() {
-	runCmd.Flags().StringVarP(&configFileRunFlag, "config-file","c", "", "Config file")
+	runCmd.Flags().StringVarP(&configFileRunFlag, "config-file", "c", "", "Config file")
 
-	runCmd.Flags().StringVarP(&programRunFlag, "program","p", "", "Program name")
-	runCmd.Flags().StringSliceVarP(&programArgsRunFlag, "program-args","a", []string{}, "Program args")
+	runCmd.Flags().StringVarP(&programRunFlag, "program", "p", "", "Program name")
+	runCmd.Flags().StringSliceVarP(&programArgsRunFlag, "program-args", "a", []string{}, "Program args")
 
-	runCmd.Flags().StringVarP(&tagRunFlag, "tag","t", "", "Tag name")
-	runCmd.Flags().StringSliceVarP(&importsRunFlag, "import","i", []string{}, "Import config files")
+	runCmd.Flags().StringVarP(&tagRunFlag, "tag", "t", "", "Tag name")
+	runCmd.Flags().StringSliceVarP(&importsRunFlag, "import", "i", []string{}, "Import config files")
 	runCmd.Flags().Int("wait-time-out", waitTimeoutRunFlag, "Time to wait before timeout in seconds")
 	runCmd.Flags().BoolVarP(&HideWindowRunFlag, "hide-window", "", false, "Hide the console window when running")
 	runCmd.Flags().StringVar(&deleterPathRunFlag, "deleter-path", "", "Deleter path")
-	
-	runCmd.Flags().BoolVarP(&DeleterHideWindowRunFlag, "deleter-hide-window", "", false, "hide the console window when runnning  deleter")
-	
-	runCmd.Flags().StringVarP(&SeparatorRunFlag,"separator","s","","Separator Value")
 
+	runCmd.Flags().BoolVarP(&DeleterHideWindowRunFlag, "deleter-hide-window", "", false, "hide the console window when runnning  deleter")
+
+	runCmd.Flags().StringVarP(&SeparatorRunFlag, "separator", "s", "", "Separator Value")
 
 	rootCmd.AddCommand(runCmd)
 

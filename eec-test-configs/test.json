@@ -1,28 +1,31 @@
 {
   "configs": [
-	{
-  		"description":  "テスト設定ファイル(JSON)"
-	}
+    {
+      "description": "Full Integration Test (JSON)"
+    }
   ],
   "envs": [
     {
-      "key": "PATH",
-      "value": [
-        "TESTDIR/TESTO/1919/",
-        "D:\\win\\dev-tools\\mpv\\",
-        "D:\\win\\program\\py\\main-project\\checkitems\\dist"
-      ]
+      "APP_NAME": "eec-json-service"
     },
     {
-      "key": "TEST_ENVS",
-      "value": [
-        "12345あいえうお",
-        "6789かきくけこ"
+      "APP_HOME": "C:\\services\\${APP_NAME}"
+    },
+    {
+      "DEPLOY_TAG": "v1.0.0-$(hostname)"
+    },
+    {
+      "PATH": [
+        "${APP_HOME}\\bin",
+        "C:\\scripts\\common"
       ]
     }
   ],
   "program": {
-    "path": "",
-    "args": []
+    "path": "pwsh",
+    "args": [
+      "-Command",
+      "Get-ChildItem Env:APP_*, Env:PATH,Env:DEPLOY_TAG"
+    ]
   }
 }

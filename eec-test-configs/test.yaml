@@ -1,16 +1,30 @@
 configs:
-  - description: "テスト設定ファイル(YAML)"
+  - description: "Full Integration Test (YAML)"
+
 envs:
-  - key: PATH
-    value:
-      - "TESTDIR/TESTO/1919/"
-      - "D:\\win\\dev-tools\\mpv\\"
-      - "D:\\win\\program\\py\\main-project\\checkitems\\dist"
-  - key: TEST_ENVS
-    value:
-      - "12345あいえうお"
-      - "6789かきくけこ"
+  # 1. Base Project Variable
+  - APP_NAME: "eec-standard-v1"
+
+  # 2. Sequential Expansion (Issue #26)
+  - APP_ROOT: "C:\\temp\\${APP_NAME}"
+
+  # 3. Command Expansion
+  - CURRENT_USER: "$(whoami)"
+
+  # 4. Complex Composition
+  - APP_IDENTIFIER: "User:${CURRENT_USER}_Project:${APP_NAME}_Time:$(date /t)"
+
+  # 5. PATH Auto-Merge (Using OS default separator)
+  - PATH:
+      - "${APP_ROOT}\\bin"
+      - "${APP_ROOT}\\tools"
+      - "$(coreutils pwd 2>$null || cd)"
+
+  # 6. Simple test variable
+  - TEST: "aiueo $(date /t) ${CURRENT_USER}"
 
 program:
   path: "pwsh"
-  args: []
+  args:
+    - "-Command"
+    - "Write-Host '--- Audit Start ---'; gci env:APP_*; gci env:PATH; gci env:TEST; Write-Host '--- Audit End ---'"

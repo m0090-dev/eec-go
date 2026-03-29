@@ -2,11 +2,10 @@ package impl
 
 import (
 	"fmt"
-	"io"
+	"github.com/m0090-dev/eec/internal/ext/interfaces"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/m0090-dev/eec/internal/ext/interfaces"
-
+	"io"
 )
 
 // -------------------------
@@ -17,14 +16,22 @@ type DefaultEvent struct {
 	e *zerolog.Event
 }
 
-func (ev *DefaultEvent) Str(key, val string) interfaces.Event       { ev.e.Str(key, val); return ev }
-func (ev *DefaultEvent) Strs(key string, vals []string) interfaces.Event { ev.e.Strs(key, vals); return ev }
+func (ev *DefaultEvent) Str(key, val string) interfaces.Event { ev.e.Str(key, val); return ev }
+func (ev *DefaultEvent) Strs(key string, vals []string) interfaces.Event {
+	ev.e.Strs(key, vals)
+	return ev
+}
 func (ev *DefaultEvent) Int(key string, val int) interfaces.Event   { ev.e.Int(key, val); return ev }
 func (ev *DefaultEvent) Bool(key string, val bool) interfaces.Event { ev.e.Bool(key, val); return ev }
 func (ev *DefaultEvent) Err(err error) interfaces.Event             { ev.e.Err(err); return ev }
-func (ev *DefaultEvent) Interface(key string, v interface{}) interfaces.Event { ev.e.Interface(key, v); return ev }
-func (ev *DefaultEvent) Msg(msg string)                   { ev.e.Msg(msg) }
-func (ev *DefaultEvent) Msgf(format string, args ...interface{}) { ev.e.Msg(fmt.Sprintf(format, args...)) }
+func (ev *DefaultEvent) Interface(key string, v interface{}) interfaces.Event {
+	ev.e.Interface(key, v)
+	return ev
+}
+func (ev *DefaultEvent) Msg(msg string) { ev.e.Msg(msg) }
+func (ev *DefaultEvent) Msgf(format string, args ...interface{}) {
+	ev.e.Msg(fmt.Sprintf(format, args...))
+}
 
 // DefaultLogger は zerolog.Logger を内部に持つ実装
 type DefaultLogger struct {
@@ -81,4 +88,3 @@ func (d *DefaultLogger) Level(l interfaces.Level) interfaces.Logger {
 func (d *DefaultLogger) Output(w io.Writer) interfaces.Logger {
 	return &DefaultLogger{l: d.l.Output(w)}
 }
-

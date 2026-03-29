@@ -1,21 +1,22 @@
-// executor_unix.go
 //go:build linux || darwin
 // +build linux darwin
+
+// executor_unix.go
 package impl
 
 import (
-	"runtime"
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"time"
 )
+
 // DefaultExecutor uses os/exec
 type DefaultExecutor struct{}
 
-
-func (d DefaultExecutor) StartProcess(path string, args []string, env []string, stdin, stdout, stderr *os.File,hideWindow bool) (*exec.Cmd, error) {
+func (d DefaultExecutor) StartProcess(path string, args []string, env []string, stdin, stdout, stderr *os.File, hideWindow bool) (*exec.Cmd, error) {
 	var cmd *exec.Cmd
 
 	switch runtime.GOOS {
@@ -46,7 +47,6 @@ func (d DefaultExecutor) StartProcess(path string, args []string, env []string, 
 	return cmd, nil
 }
 
-
 func (d DefaultExecutor) WaitProcess(proc *os.Process, timeout time.Duration) error {
 	// We need the *Cmd to call Wait; but we only have *os.Process here.
 	// Simpler: poll process state.
@@ -65,6 +65,6 @@ func (d DefaultExecutor) WaitProcess(proc *os.Process, timeout time.Duration) er
 		return fmt.Errorf("wait timeout after %s", timeout)
 	}
 }
-func (d DefaultExecutor) Getpid() int{return os.Getpid()}
+func (d DefaultExecutor) Getpid() int { return os.Getpid() }
 
-func (d DefaultExecutor) FindProcess(pid int) (*os.Process,error) {return os.FindProcess(pid)}
+func (d DefaultExecutor) FindProcess(pid int) (*os.Process, error) { return os.FindProcess(pid) }

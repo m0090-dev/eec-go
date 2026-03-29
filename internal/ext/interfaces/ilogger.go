@@ -1,4 +1,5 @@
 package interfaces
+
 import "io"
 
 // Event はログビルダー（チェーンでフィールド追加して最後に Msg() を呼ぶ）を表す。
@@ -41,5 +42,3 @@ type Logger interface {
 	Level(l Level) Logger
 	Output(w io.Writer) Logger
 }
-
-

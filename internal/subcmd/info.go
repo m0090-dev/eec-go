@@ -7,12 +7,13 @@ import (
 	"github.com/m0090-dev/eec/internal/core"
 	"github.com/spf13/cobra"
 )
-func info(){
-		//fmt.Printf("version: %s\n",ext.VERSION)
-		e := core.NewEngine(nil,nil)
-		if err := e.Info();err!=nil{
-			e.Logger.Fatal().Err(err).Msg("Failed to info")
-		}
+
+func info() {
+	//fmt.Printf("version: %s\n",ext.VERSION)
+	e := core.NewEngine(nil, nil)
+	if err := e.Info(); err != nil {
+		e.Logger.Fatal().Err(err).Msg("Failed to info")
+	}
 }
 
 // ---------------------------
@@ -37,7 +38,6 @@ Effect:
 		info()
 	},
 }
-
 
 func init() {
 	rootCmd.AddCommand(infoCmd)

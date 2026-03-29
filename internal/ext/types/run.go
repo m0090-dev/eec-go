@@ -1,4 +1,5 @@
 package types
+
 import "time"
 
 // RunOptions contains all inputs that were previously taken from flags / tag file.
@@ -13,8 +14,5 @@ type RunOptions struct {
 	HideWindow        bool
 	DeleterPath       string
 	DeleterHideWindow bool
-	Separator	  string
+	Separator         string
 }
-
-
-
