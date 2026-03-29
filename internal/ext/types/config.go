@@ -352,7 +352,7 @@ func ReadInlineYaml(os OS, logger interfaces.Logger, yamlData string) (Config, e
 /*}*/
 
 func (c *Config) ApplyEnvs(os OS, logger interfaces.Logger, separator string) error {
-
+	logger.Debug().Int("count", len(c.Envs)).Msg("ApplyEnvs CALLED")
 	// まず Description を必ず出力
 	for _, cfgs := range c.Configs {
 		if cfgs.Description != "" {

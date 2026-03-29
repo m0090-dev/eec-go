@@ -240,6 +240,7 @@ func ResolveRunOptions(
 	// 環境変数を構築
 	// ------------------------
 	finalEnv = os.Env.Environ()
+
 	for _, cfg := range allConfigs {
 		finalEnv = cfg.BuildEnvs(os, logger, finalEnv, opts.Separator)
 	}

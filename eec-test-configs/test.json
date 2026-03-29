@@ -6,20 +6,16 @@
   ],
   "envs": [
     {
-      "key": "APP_NAME",
-      "value": "eec-json-service"
+      "APP_NAME": "eec-json-service"
     },
     {
-      "key": "APP_HOME",
-      "value": "C:\\services\\${APP_NAME}"
+      "APP_HOME": "C:\\services\\${APP_NAME}"
     },
     {
-      "key": "DEPLOY_TAG",
-      "value": "v1.0.0-$(hostname)"
+      "DEPLOY_TAG": "v1.0.0-$(hostname)"
     },
     {
-      "key": "PATH",
-      "value": [
+      "PATH": [
         "${APP_HOME}\\bin",
         "C:\\scripts\\common"
       ]
@@ -27,6 +23,9 @@
   ],
   "program": {
     "path": "pwsh",
-    "args": ["-Command", "Get-ChildItem Env:APP_*, Env:PATH"]
+    "args": [
+      "-Command",
+      "Get-ChildItem Env:APP_*, Env:PATH,Env:DEPLOY_TAG"
+    ]
   }
 }
