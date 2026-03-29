@@ -35,8 +35,8 @@ func getAllEnvsFromAny(envMap any) []string {
 	case map[string]map[string]struct{}:
 		for k, vMap := range m {
 			if strings.HasPrefix(k, "=") || k == "" {
-        			continue
-    			}
+				continue
+			}
 			var vals []string
 			for v := range vMap {
 				vals = append(vals, v)
@@ -46,8 +46,8 @@ func getAllEnvsFromAny(envMap any) []string {
 	case map[string][]string:
 		for k, v := range m {
 			if strings.HasPrefix(k, "=") || k == "" {
-        			continue
-    			}
+				continue
+			}
 			result = append(result, k+"="+strings.Join(v, sep))
 		}
 	}
