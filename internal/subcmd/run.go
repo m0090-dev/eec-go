@@ -15,6 +15,10 @@ import (
 // 位置引数やフラグ 格納
 // ---------------------------
 var configFileRunFlag string
+var inlineConfigRunFlag string     // 追加: 自動判別
+var inlineConfigTomlRunFlag string // 追加: TOML
+var inlineConfigYamlRunFlag string // 追加: YAML
+var inlineConfigJsonRunFlag string // 追加: JSON
 var programRunFlag string
 var programArgsRunFlag []string
 var tagRunFlag string
@@ -29,6 +33,10 @@ func run() {
 	e := core.NewEngine(nil, nil)
 	opts := types.RunOptions{
 		ConfigFile:        configFileRunFlag,
+		InlineConfig:      inlineConfigRunFlag,
+		InlineConfigToml:  inlineConfigTomlRunFlag,
+		InlineConfigYaml:  inlineConfigYamlRunFlag,
+		InlineConfigJson:  inlineConfigJsonRunFlag,
 		Program:           programRunFlag,
 		ProgramArgs:       programArgsRunFlag,
 		Tag:               tagRunFlag,
@@ -72,7 +80,10 @@ in clean, reproducible environments.`,
 
 func init() {
 	runCmd.Flags().StringVarP(&configFileRunFlag, "config-file", "c", "", "Config file")
-
+	runCmd.Flags().StringVarP(&inlineConfigRunFlag, "inline", "l", "", "Inline config string (auto-detect TOML/JSON/YAML)")
+	runCmd.Flags().StringVar(&inlineConfigTomlRunFlag, "inline-toml", "", "Inline TOML config string")
+	runCmd.Flags().StringVar(&inlineConfigYamlRunFlag, "inline-yaml", "", "Inline YAML config string")
+	runCmd.Flags().StringVar(&inlineConfigJsonRunFlag, "inline-json", "", "Inline JSON config string")
 	runCmd.Flags().StringVarP(&programRunFlag, "program", "p", "", "Program name")
 	runCmd.Flags().StringSliceVarP(&programArgsRunFlag, "program-args", "a", []string{}, "Program args")
 
