@@ -16,10 +16,11 @@ import (
 )
 
 type Config struct {
-	Configs []MetaConfig `toml:"configs" yaml:"configs" json:"configs"`
-	RawEnvs interface{}  `toml:"envs" yaml:"envs" json:"envs"`
-	Envs    []Environ    `toml:"-" yaml:"-" json:"-"`
-	Program ProgramData  `toml:"program" yaml:"program" json:"program"`
+	RawConfigs interface{}  `toml:"configs" yaml:"configs" json:"configs"`
+	Configs    []MetaConfig `toml:"-" yaml:"-" json:"-"`
+	RawEnvs    interface{}  `toml:"envs" yaml:"envs" json:"envs"`
+	Envs       []Environ    `toml:"-" yaml:"-" json:"-"`
+	Program    ProgramData  `toml:"program" yaml:"program" json:"program"`
 }
 type MetaConfig struct {
 	Separator   string `toml:"separator" yaml:"separator" json:"separator"`
@@ -107,9 +108,9 @@ func (c *Config) SortEnvsByDependency() error {
 	return nil
 }
 
-func (c *Config) NormalizeEnvs(logger interfaces.Logger) {
+func (c *Config) NormalizeEnvs(logger interfaces.Logger) error {
 	if c.RawEnvs == nil {
-		return
+		return nil
 	}
 
 	switch data := c.RawEnvs.(type) {
@@ -153,7 +154,53 @@ func (c *Config) NormalizeEnvs(logger interfaces.Logger) {
 				c.Envs = append(c.Envs, Environ{Key: strKey, Value: v})
 			}
 		}
+	default:
+		// 想定外の型（文字列や数値などが直接 envs に指定された場合）
+		return fmt.Errorf("unsupported type for envs: %T (must be map or list)", c.RawEnvs)
 	}
+	return nil
+}
+func (c *Config) NormalizeConfigs(logger interfaces.Logger) error {
+	if c.RawConfigs == nil {
+		return nil
+	}
+
+	switch data := c.RawConfigs.(type) {
+	case []interface{}:
+		// [[configs]] (リスト形式) の処理
+		for _, item := range data {
+			m, ok := item.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			c.Configs = append(c.Configs, mapToMetaConfig(m))
+		}
+	case map[string]interface{}:
+		// [configs] (マップ形式) の処理
+		c.Configs = append(c.Configs, mapToMetaConfig(data))
+	case map[interface{}]interface{}:
+		// YAML用互換性
+		m := make(map[string]interface{})
+		for k, v := range data {
+			if strKey, ok := k.(string); ok {
+				m[strKey] = v
+			}
+		}
+		c.Configs = append(c.Configs, mapToMetaConfig(m))
+	}
+	return nil
+}
+
+// 補助関数: map から MetaConfig 構造体に変換
+func mapToMetaConfig(m map[string]interface{}) MetaConfig {
+	var mc MetaConfig
+	if s, ok := m["separator"].(string); ok {
+		mc.Separator = s
+	}
+	if d, ok := m["description"].(string); ok {
+		mc.Description = d
+	}
+	return mc
 }
 
 func ReadConfig(os OS, logger interfaces.Logger, fileName string) (Config, error) {
@@ -169,16 +216,74 @@ func ReadConfig(os OS, logger interfaces.Logger, fileName string) (Config, error
 	}
 	return Config{}, nil
 }
-func ReadInlineConfig(os OS, logger interfaces.Logger, fileName string) (Config, error) {
-	ext := os.FS.FileExt(fileName)
-	if ext == ".toml" {
-		return ReadInlineToml(os, logger, fileName)
-	} else if ext == ".yaml" || ext == ".yml" {
-		return ReadInlineYaml(os, logger, fileName)
-	} else if ext == ".json" {
-		return ReadInlineJson(os, logger, fileName)
+
+func ReadInlineConfig(os OS, logger interfaces.Logger, content string, format string) (Config, error) {
+	content = strings.TrimSpace(content)
+	if content == "" {
+		return Config{}, nil
 	}
-	return Config{}, nil
+
+	var cfg Config
+	var err error
+	format = strings.ToLower(strings.TrimSpace(format))
+
+	// --- 1. パース処理 (手動指定 or 自動判別) ---
+	if format != "" {
+		// フォーマットが明示されている場合
+		switch format {
+		case "toml":
+			err = toml.Unmarshal([]byte(content), &cfg)
+		case "yaml", "yml":
+			err = yaml.Unmarshal([]byte(content), &cfg)
+		case "json":
+			err = json.Unmarshal([]byte(content), &cfg)
+		default:
+			return Config{}, fmt.Errorf("unsupported format: %s", format)
+		}
+	} else {
+		// フォーマットが空の場合：自動判別
+		// A. JSON: 先頭が { か [ なら JSON として試行
+		if strings.HasPrefix(content, "{") || strings.HasPrefix(content, "[") {
+			if err = json.Unmarshal([]byte(content), &cfg); err == nil {
+				goto PARSED
+			}
+		}
+
+		// B. TOML: 構造が厳格なので YAML より先に試す
+		if err = toml.Unmarshal([]byte(content), &cfg); err == nil {
+			// TOMLとして受理されても、中身が全くパースできていない(空の)場合は次へ
+			if cfg.RawEnvs != nil || len(cfg.Configs) > 0 || cfg.Program.Path != "" {
+				goto PARSED
+			}
+		}
+
+		// C. YAML: 最も寛容なので最後に試す
+		if err = yaml.Unmarshal([]byte(content), &cfg); err == nil {
+			goto PARSED
+		}
+
+		return Config{}, fmt.Errorf("failed to auto-detect inline config format (tried JSON, TOML, YAML)")
+	}
+
+PARSED:
+	if err != nil {
+		return Config{}, fmt.Errorf("parse error (%s): %w", format, err)
+	}
+
+	// --- 2. 共通の正規化・依存関係ソート ---
+	// 先ほど修正した、errorを返すようになった NormalizeEnvs を使用
+	if err := cfg.NormalizeConfigs(logger); err != nil {
+		return Config{}, fmt.Errorf("normalize configs error: %w", err)
+	}
+	if err := cfg.NormalizeEnvs(logger); err != nil {
+		return Config{}, fmt.Errorf("normalize error: %w", err)
+	}
+
+	if err := cfg.SortEnvsByDependency(); err != nil {
+		return Config{}, fmt.Errorf("dependency sort error: %w", err)
+	}
+
+	return cfg, nil
 }
 
 func ReadJson(os OS, logger interfaces.Logger, fileName string) (Config, error) {
@@ -190,6 +295,7 @@ func ReadJson(os OS, logger interfaces.Logger, fileName string) (Config, error) 
 	var config Config
 	err = json.Unmarshal(data, &config)
 	if err == nil {
+		config.NormalizeConfigs(logger)
 		config.NormalizeEnvs(logger)
 		config.SortEnvsByDependency()
 	}
@@ -205,6 +311,7 @@ func ReadYaml(os OS, logger interfaces.Logger, fileName string) (Config, error) 
 	var config Config
 	err = yaml.Unmarshal(data, &config)
 	if err == nil {
+		config.NormalizeConfigs(logger)
 		config.NormalizeEnvs(logger)
 		config.SortEnvsByDependency()
 	}
@@ -221,6 +328,7 @@ func ReadToml(os OS, logger interfaces.Logger, fileName string) (Config, error) 
 	var config Config
 	err = toml.Unmarshal(data, &config)
 	if err == nil {
+		config.NormalizeConfigs(logger)
 		config.NormalizeEnvs(logger)
 		config.SortEnvsByDependency()
 	}
