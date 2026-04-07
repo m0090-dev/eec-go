@@ -9,10 +9,8 @@ func ResolveRunOptions(
 	tagData types.TagData,
 	os types.OS,
 	logger interfaces.Logger,
-) (configFile string, program string, programArgs []string, finalEnv []string) {
-
+) (configFile string, program string, programArgs []string, finalEnv []string, err error) {
 	var config types.Config
-	var err error
 	allConfigs := []types.Config{}
 
 	// ------------------------
@@ -40,16 +38,20 @@ func ResolveRunOptions(
 
 	// タグで指定された imports（最も低い）
 	for _, imp := range tagData.ImportConfigFiles {
-		if cfg, err := ReadOrFallbackRecursive(opts, os, logger, imp); err == nil {
-			allConfigs = append(allConfigs, cfg)
+		cfg, err := ReadOrFallbackRecursive(opts, os, logger, imp)
+		if err != nil {
+			return "", "", nil, nil, err // ← continue ではなく return
 		}
+		allConfigs = append(allConfigs, cfg)
 	}
 
 	// CLI で指定された imports（中間）
 	for _, imp := range opts.Imports {
-		if cfg, err := ReadOrFallbackRecursive(opts, os, logger, imp); err == nil {
-			allConfigs = append(allConfigs, cfg)
+		cfg, err := ReadOrFallbackRecursive(opts, os, logger, imp)
+		if err != nil {
+			return "", "", nil, nil, err // ← continue ではなく return
 		}
+		allConfigs = append(allConfigs, cfg)
 	}
 
 	// ----------------------
@@ -111,7 +113,7 @@ func ResolveRunOptions(
 		finalEnv = cfg.BuildEnvs(os, logger, finalEnv, opts.Separator)
 	}
 
-	return configFile, program, programArgs, finalEnv
+	return configFile, program, programArgs, finalEnv, nil
 }
 
 // ヘルパー: どのインラインフラグを使うか判定

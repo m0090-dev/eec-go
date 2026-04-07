@@ -22,10 +22,10 @@ DUMMY_MIDDLE = "Middle"
 DUMMY_03 = "data"
 DUMMY_04 = "data"
 DUMMY_LAST = "End"
-TEST = ["aiueo","kakikukeko","tatituteto"]
+TEST = "$(cmd /c echo %DATE:~0,10%)-$(whoami)"
 
 # 3. 最後に評価されるべき項目を中間に置く
-FINAL_CHECK = "Result:${STEP_10}"
+FINAL_CHECK = "Result: ${STEP_10}"
 
 # 4. PATH も途中に依存を混ぜる
 PATH = [

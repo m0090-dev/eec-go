@@ -11,15 +11,12 @@ jobs:
         include:
           - os: windows-latest
             goos: windows
-            build_gui: true
             build_lib: true
           - os: ubuntu-latest
             goos: linux
-            build_gui: true
             build_lib: false
           - os: macos-latest
             goos: darwin
-            build_gui: true
             build_lib: false
     runs-on: ${{ matrix.os }}
     
@@ -58,7 +55,6 @@ jobs:
           export PATH=$PATH:$(go env GOPATH)/bin
           mage BuildCLIRelease
           if [ "${{ matrix.build_lib }}" = "true" ]; then mage BuildLibRelease; fi
-          if [ "${{ matrix.build_gui }}" = "true" ]; then mage BuildGUIRelease; fi
 
       # 各OSの成果物をひとつのZIPにまとめる
       - name: Package Assets

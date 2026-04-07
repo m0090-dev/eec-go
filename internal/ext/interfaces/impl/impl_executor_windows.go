@@ -8,8 +8,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"runtime"
-	//"strings"
 	"syscall"
 	"time"
 )
@@ -17,6 +15,52 @@ import (
 // DefaultExecutor uses os/exec
 type DefaultExecutor struct{}
 
+func (d DefaultExecutor) Command(path string, args []string, env []string, stdin, stdout, stderr *os.File, hideWindow bool) (*exec.Cmd, error) {
+	var cmd *exec.Cmd
+
+	if _, err := exec.LookPath("cmd.exe"); err == nil {
+		cmdArgs := append([]string{"/C", path}, args...)
+		cmd = exec.Command("cmd.exe", cmdArgs...)
+
+		// Windows 専用フラグ
+		if hideWindow {
+			cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+		} else {
+			cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: false, CreationFlags: 0x00000010}
+		}
+	} else {
+		return nil, fmt.Errorf("cmd.exe not found in PATH")
+	}
+
+	cmd.Env = env
+	if stdin != nil {
+		cmd.Stdin = stdin
+	}
+	if stdout != nil {
+		cmd.Stdout = stdout
+	}
+	if stderr != nil {
+		cmd.Stderr = stderr
+	}
+
+	return cmd, nil
+}
+
+// StartProcess は組み立ててから Start() を呼ぶ
+func (d DefaultExecutor) StartProcess(path string, args []string, env []string, stdin, stdout, stderr *os.File, hideWindow bool) (*exec.Cmd, error) {
+	cmd, err := d.Command(path, args, env, stdin, stdout, stderr, hideWindow)
+	if err != nil {
+		return nil, err
+	}
+
+	// ここで実際にプロセスを開始する
+	if err := cmd.Start(); err != nil {
+		return nil, err
+	}
+	return cmd, nil
+}
+
+/*
 func (d DefaultExecutor) StartProcess(path string, args []string, env []string, stdin, stdout, stderr *os.File, hideWindow bool) (*exec.Cmd, error) {
 	var cmd *exec.Cmd
 
@@ -45,15 +89,16 @@ func (d DefaultExecutor) StartProcess(path string, args []string, env []string, 
 	}
 
 	cmd.Env = env
-	cmd.Stdin = stdin
-	cmd.Stdout = stdout
-	cmd.Stderr = stderr
+	if stdin != nil { cmd.Stdin = stdin }
+	if stdout != nil { cmd.Stdout = stdout }
+	if stderr != nil { cmd.Stderr = stderr }
 
 	if err := cmd.Start(); err != nil {
 		return nil, err
 	}
 	return cmd, nil
 }
+*/
 
 func (d DefaultExecutor) WaitProcess(proc *os.Process, timeout time.Duration) error {
 	// We need the *Cmd to call Wait; but we only have *os.Process here.

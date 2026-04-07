@@ -15,6 +15,9 @@
       "DEPLOY_TAG": "v1.0.0-$(hostname)"
     },
     {
+      "TEST" : "$(cmd /c echo %DATE:~0,10%)-$(whoami)"
+    },
+    {
       "PATH": [
         "${APP_HOME}\\bin",
         "C:\\scripts\\common"
@@ -25,7 +28,7 @@
     "path": "pwsh",
     "args": [
       "-Command",
-      "Get-ChildItem Env:APP_*, Env:PATH,Env:DEPLOY_TAG"
+      "Get-ChildItem Env:APP_*, Env:PATH,Env:DEPLOY_TAG,Env:TEST"
     ]
   }
 }

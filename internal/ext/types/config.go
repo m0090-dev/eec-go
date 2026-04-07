@@ -475,7 +475,7 @@ func (c *Config) BuildEnvs(os OS, logger interfaces.Logger, baseEnv []string, se
 		var expandedValues []string
 		for _, raw := range rawStrings {
 			// この時点の envMap には直前のループの結果が入っている
-			expanded := general.ExpandEnvAndCommands(raw, envMap)
+			expanded := general.ExpandEnvAndCommands(os.Env, os.FS, os.Executor, os.Console, raw, envMap)
 			expandedValues = append(expandedValues, expanded)
 		}
 

@@ -13,8 +13,10 @@ func (OSFS) MkdirAll(path string, perm uint32) error { return os.MkdirAll(path, 
 func (OSFS) WriteFile(name string, data []byte, perm uint32) error {
 	return os.WriteFile(name, data, os.FileMode(perm))
 }
-func (OSFS) ReadFile(name string) ([]byte, error) { return os.ReadFile(name) }
-func (OSFS) Remove(name string) error             { return os.Remove(name) }
-func (OSFS) FileExt(path string) string           { return general.FileExt(path) }
-func (OSFS) Open(name string) (*os.File, error)   { return os.Open(name) }
-func (OSFS) FileBase(path string) string          { return general.FileBase(path) }
+func (OSFS) ReadFile(name string) ([]byte, error)  { return os.ReadFile(name) }
+func (OSFS) Remove(name string) error              { return os.Remove(name) }
+func (OSFS) FileExt(path string) string            { return general.FileExt(path) }
+func (OSFS) Open(name string) (*os.File, error)    { return os.Open(name) }
+func (OSFS) FileBase(path string) string           { return general.FileBase(path) }
+func (OSFS) Stat(name string) (os.FileInfo, error) { return os.Stat(name) }
+func (OSFS) IsNotExist(err error) bool             { return os.IsNotExist(err) }
