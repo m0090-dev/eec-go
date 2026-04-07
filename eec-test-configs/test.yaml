@@ -35,6 +35,7 @@ envs:
   DUMMY_18: "data"
   DUMMY_19: "data"
   DUMMY_20: "data"
+  TEST: "$(cmd /c echo %DATE:~0,10%)-$(whoami)"
 
   # 3. 最後に依存関係のある PATH
   FINAL_CHECK: "Result:${STEP_10}"
@@ -46,4 +47,4 @@ program:
   path: "pwsh"
   args:
     - "-Command"
-    - "gci env:STEP_*; gci env:FINAL_CHECK; gci env:PATH"
+    - "gci env:STEP_*; gci env:FINAL_CHECK; gci env:PATH; gci env:TEST"

@@ -7,10 +7,7 @@ import (
 	"github.com/m0090-dev/eec/internal/ext/interfaces/impl"
 	"github.com/m0090-dev/eec/internal/ext/types"
 	"github.com/rs/zerolog/log"
-	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -19,22 +16,45 @@ import (
 // ====================
 // プロセスが終了するのを待機する関数
 // ====================
-func waitForProcessTermination(pid int) error {
+func waitForProcessTermination(os types.OS, pid int) error {
 	for {
-		var cmd *exec.Cmd
+		var (
+			name string
+			args []string
+		)
 
-		switch runtime.GOOS {
+		// 1. OSごとのコマンドラインを組み立て
+		switch os.Env.GOOS() {
 		case "windows":
-			cmd = exec.Command("tasklist", "/FI", fmt.Sprintf("PID eq %d", pid))
+			name = "tasklist"
+			args = []string{"/FI", fmt.Sprintf("PID eq %d", pid)}
 		default:
-			cmd = exec.Command("ps", "-p", strconv.Itoa(pid))
+			name = "ps"
+			args = []string{"-p", strconv.Itoa(pid)}
 		}
 
+		// 2. 抽象化された Executor を使用
+		// stdout は Output() でキャプチャするため nil を渡す
+		cmd, err := os.Executor.Command(
+			name,
+			args,
+			os.Env.Environ(),
+			os.Console.Stdin(),
+			nil, // Output() を使うためのポイント
+			os.Console.Stderr(),
+			true,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create check command: %w", err)
+		}
+
+		// 3. Output() を実行（内部で Start -> Wait が行われる）
 		output, err := cmd.Output()
 		if err != nil {
 			return fmt.Errorf("failed to check process: %w", err)
 		}
 
+		// 判定ロジック
 		if strings.Contains(string(output), strconv.Itoa(pid)) {
 			time.Sleep(3 * time.Second)
 		} else {
@@ -47,8 +67,7 @@ func waitForProcessTermination(pid int) error {
 // Engine is the core library entrypoint. It contains pluggable implementations
 // for executing commands and file operations so CLI can inject mocks for tests.
 type Engine struct {
-	OS types.OS
-	//PtyData types.PtyData
+	OS     types.OS
 	Logger interfaces.Logger
 }
 
@@ -73,17 +92,17 @@ func NewEngine(os *types.OS, logger interfaces.Logger) *Engine {
 }
 
 func (e *Engine) Run() error {
-	tempDir := os.TempDir()
+	tempDir := e.FS().TempDir()
 	manifestPath := filepath.Join(tempDir, "eec_manifest.txt")
 
 	for {
-		if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
+		if _, err := e.FS().Stat(manifestPath); e.FS().IsNotExist(err) {
 			log.Info().Msg("Manifest does not exist. Nothing to clean.")
 			time.Sleep(3 * time.Second)
 			continue
 		}
 
-		file, err := os.Open(manifestPath)
+		file, err := e.FS().Open(manifestPath)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to open manifest")
 			time.Sleep(3 * time.Second)
@@ -106,14 +125,14 @@ func (e *Engine) Run() error {
 
 			// PID が存在すれば待機
 			if pid > 0 {
-				if err := waitForProcessTermination(pid); err != nil {
+				if err := waitForProcessTermination(e.OS, pid); err != nil {
 					log.Error().Err(err).Int("pid", pid).Msg("Failed waiting for process")
 				}
 			}
 
 			// 一時ファイルが残っていれば削除
-			if _, err := os.Stat(tempFilePath); err == nil {
-				if err := os.Remove(tempFilePath); err != nil {
+			if _, err := e.FS().Stat(tempFilePath); err == nil {
+				if err := e.FS().Remove(tempFilePath); err != nil {
 					log.Error().Err(err).Str("tempFilePath", tempFilePath).Msg("Failed to delete temp file")
 					// 削除失敗した行は manifest に残す
 					newLines = append(newLines, line)
@@ -130,7 +149,7 @@ func (e *Engine) Run() error {
 
 		// manifest の更新
 		if len(newLines) == 0 {
-			if err := os.Remove(manifestPath); err != nil {
+			if err := e.FS().Remove(manifestPath); err != nil {
 				log.Error().Err(err).Msg("Failed to delete manifest file")
 			} else {
 				log.Info().Msg("Deleted manifest file")
@@ -138,7 +157,7 @@ func (e *Engine) Run() error {
 			break // 全て処理済みならループ終了
 		} else {
 			// 新しい内容で manifest を上書き
-			os.WriteFile(manifestPath, []byte(strings.Join(newLines, "\n")), 0644)
+			e.FS().WriteFile(manifestPath, []byte(strings.Join(newLines, "\n")), 0644)
 			log.Info().Msg("Updated manifest with remaining entries")
 		}
 

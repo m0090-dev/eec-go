@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/m0090-dev/eec/internal/ext/interfaces"
 	"github.com/m0090-dev/eec/internal/ext/types"
-	//"github.com/m0090-dev/eec/internal/ext/utils/general"
 	gos "os"
 	"os/exec"
 	"path/filepath"
@@ -13,6 +12,7 @@ import (
 	"syscall"
 )
 
+/*
 // ReadOrFallback is the same helper behavior as original core.
 func ReadOrFallback(opts types.RunOptions, os types.OS, logger interfaces.Logger, name string) (types.Config, error) {
 	var cfg types.Config
@@ -47,6 +47,13 @@ func ReadOrFallback(opts types.RunOptions, os types.OS, logger interfaces.Logger
 	}
 	return cfg, nil
 }
+
+
+
+
+
+
+
 
 func ReadOrFallbackRecursive(opts types.RunOptions, os types.OS, logger interfaces.Logger, name string) (types.Config, error) {
 	var cfg types.Config
@@ -92,15 +99,79 @@ func ReadOrFallbackRecursive(opts types.RunOptions, os types.OS, logger interfac
 	}
 	return cfg, nil
 }
+*/
+
+func ReadOrFallback(opts types.RunOptions, os types.OS, logger interfaces.Logger, name string) (types.Config, error) {
+	return readOrFallbackInternal(opts, os, logger, name, make(map[string]bool))
+}
+
+func ReadOrFallbackRecursive(opts types.RunOptions, os types.OS, logger interfaces.Logger, name string) (types.Config, error) {
+	return readOrFallbackInternal(opts, os, logger, name, make(map[string]bool))
+}
+
+func readOrFallbackInternal(opts types.RunOptions, os types.OS, logger interfaces.Logger, name string, visited map[string]bool) (types.Config, error) {
+	// 循環チェック
+	absPath, _ := filepath.Abs(name)
+	if visited[absPath] {
+		return types.Config{}, fmt.Errorf("circular import detected: %s", absPath)
+	}
+	visited[absPath] = true
+
+	var cfg types.Config
+	if os.FS.FileExists(name) {
+		return types.ReadConfig(os, logger, name)
+	}
+
+	tagData, err := types.ReadTagData(os, logger, name)
+	if err != nil {
+		return cfg, err
+	}
+
+	env := os.Env.Environ()
+	for _, f := range tagData.ImportConfigFiles {
+		// ★ここが重要：同じ visited map を渡して再帰する
+		fcfg, err := readOrFallbackInternal(opts, os, logger, f, visited)
+		if err != nil {
+			// 循環参照エラーなら即座に復帰（logger.Warnで流さず、上位にエラーを伝播させる）
+			return cfg, err
+		}
+		env = fcfg.BuildEnvs(os, logger, env, opts.Separator)
+	}
+
+	// env → cfg.Envs に変換 (以下、既存ロジック)
+	cfg.Envs = nil
+	for _, e := range env {
+		parts := strings.SplitN(e, "=", 2)
+		if len(parts) == 2 {
+			cfg.Envs = append(cfg.Envs, types.Environ{Key: parts[0], Value: parts[1]})
+		}
+	}
+	return cfg, nil
+}
 
 func IsProcessRunning(os types.OS, logger interfaces.Logger, name string) (bool, error) {
-	switch runtime.GOOS {
+	goos := os.Env.GOOS()
+	switch goos {
 	case "windows":
 		if !strings.HasSuffix(name, ".exe") {
 			name += ".exe"
 		}
-		// Windows: tasklist
-		cmd := exec.Command("tasklist", "/FI", fmt.Sprintf("IMAGENAME eq %s", name))
+		// exec.Command の代わりに os.Executor.StartProcess を使う
+		// cmd.Output() を使う場合、StartProcess の stdout 引数は nil で良い
+		cmd, err := os.Executor.Command(
+			"tasklist",
+			[]string{"/FI", fmt.Sprintf("IMAGENAME eq %s", name)},
+			os.Env.Environ(),
+			os.Console.Stdin(),
+			nil, // Output() が内部でセットするので nil
+			os.Console.Stderr(),
+			true,
+		)
+		if err != nil {
+			return false, err
+		}
+
+		// *exec.Cmd なのでそのまま Output() が使える
 		output, err := cmd.Output()
 		if err != nil {
 			return false, err
@@ -108,19 +179,31 @@ func IsProcessRunning(os types.OS, logger interfaces.Logger, name string) (bool,
 		return strings.Contains(string(output), name), nil
 
 	case "linux", "darwin":
-		// Linux / macOS: pgrep -x
-		cmd := exec.Command("pgrep", "-x", name)
-		err := cmd.Run()
+		cmd, err := os.Executor.Command(
+			"pgrep",
+			[]string{"-x", name},
+			os.Env.Environ(),
+			os.Console.Stdin(),
+			os.Console.Stdout(),
+			os.Console.Stderr(),
+			true,
+		)
+		if err != nil {
+			return false, err
+		}
+
+		// Run() や Wait() で終了コードを確認
+		err = cmd.Wait()
 		if err == nil {
-			return true, nil // exit code 0 → 実行中
+			return true, nil
 		}
 		if exitError, ok := err.(*exec.ExitError); ok && exitError.ExitCode() == 1 {
-			return false, nil // exit code 1 → 見つからない
+			return false, nil
 		}
 		return false, err
 
 	default:
-		return false, fmt.Errorf("unsupported OS: %s", runtime.GOOS)
+		return false, fmt.Errorf("unsupported OS: %s", goos)
 	}
 }
 

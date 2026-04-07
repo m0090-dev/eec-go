@@ -8,14 +8,52 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"runtime"
-	"strings"
 	"time"
 )
 
 // DefaultExecutor uses os/exec
 type DefaultExecutor struct{}
 
+func (d DefaultExecutor) Command(path string, args []string, env []string, stdin, stdout, stderr *os.File, hideWindow bool) (*exec.Cmd, error) {
+	var cmd *exec.Cmd
+
+	// sh -c 経由で実行
+	if _, err := exec.LookPath("sh"); err == nil {
+		cmdArgs := append([]string{"-c", path}, args...)
+		cmd = exec.Command("sh", cmdArgs...)
+	} else {
+		// sh すら無い環境用（一応）
+		cmd = exec.Command(path, args...)
+	}
+
+	cmd.Env = env
+	if stdin != nil {
+		cmd.Stdin = stdin
+	}
+	if stdout != nil {
+		cmd.Stdout = stdout
+	}
+	if stderr != nil {
+		cmd.Stderr = stderr
+	}
+
+	return cmd, nil
+}
+
+// StartProcess: Command を呼んでから Start する
+func (d DefaultExecutor) StartProcess(path string, args []string, env []string, stdin, stdout, stderr *os.File, hideWindow bool) (*exec.Cmd, error) {
+	cmd, err := d.Command(path, args, env, stdin, stdout, stderr, hideWindow)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := cmd.Start(); err != nil {
+		return nil, err
+	}
+	return cmd, nil
+}
+
+/*
 func (d DefaultExecutor) StartProcess(path string, args []string, env []string, stdin, stdout, stderr *os.File, hideWindow bool) (*exec.Cmd, error) {
 	var cmd *exec.Cmd
 
@@ -38,14 +76,15 @@ func (d DefaultExecutor) StartProcess(path string, args []string, env []string, 
 	}
 
 	cmd.Env = env
-	cmd.Stdin = stdin
-	cmd.Stdout = stdout
-	cmd.Stderr = stderr
+	if stdin != nil { cmd.Stdin = stdin }
+	if stdout != nil { cmd.Stdout = stdout }
+	if stderr != nil { cmd.Stderr = stderr }
 	if err := cmd.Start(); err != nil {
 		return nil, err
 	}
 	return cmd, nil
 }
+*/
 
 func (d DefaultExecutor) WaitProcess(proc *os.Process, timeout time.Duration) error {
 	// We need the *Cmd to call Wait; but we only have *os.Process here.

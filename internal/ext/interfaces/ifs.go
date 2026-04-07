@@ -14,4 +14,6 @@ type FS interface {
 	FileExt(path string) string
 	FileBase(path string) string
 	Open(name string) (*os.File, error)
+	Stat(name string) (os.FileInfo, error)
+	IsNotExist(err error) bool
 }
