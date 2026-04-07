@@ -24,18 +24,6 @@ func ReadOrFallback(opts types.RunOptions, os types.OS, logger interfaces.Logger
 		return cfg, err
 	}
 	env := os.Env.Environ()
-	/*
-		for _, f := range tagData.ImportConfigFiles {
-			var fcfg types.Config
-			if general.FileExists(f) {
-				fcfg, _ = types.ReadConfig(os, logger, f)
-			} else {
-				fcfg, _ = types.ReadInlineConfig(os, logger, f)
-			}
-			fcfg.ApplyEnvs(os, logger, opts.Separator)
-			cfg = fcfg
-		}
-	*/
 	for _, f := range tagData.ImportConfigFiles {
 		fcfg, err := ReadOrFallbackRecursive(opts, os, logger, f)
 		if err != nil {
@@ -46,7 +34,7 @@ func ReadOrFallback(opts types.RunOptions, os types.OS, logger interfaces.Logger
 		env = fcfg.BuildEnvs(os, logger, env, opts.Separator)
 	}
 
-	// ★ここが重要：env → cfg.Envs に変換
+	// env → cfg.Envs に変換
 	cfg.Envs = nil
 	for _, e := range env {
 		parts := strings.SplitN(e, "=", 2)
@@ -74,30 +62,6 @@ func ReadOrFallbackRecursive(opts types.RunOptions, os types.OS, logger interfac
 		return cfg, err
 	}
 	env := os.Env.Environ()
-	/* // 3. import ファイルを再帰的に読み込む*/
-	/*for _, f := range tagData.ImportConfigFiles {*/
-	/*fcfg, err := ReadOrFallbackRecursive(opts, os, logger, f)*/
-	/*if err != nil {*/
-	/*logger.Warn().Str("import", f).Err(err).Msg("failed to read import config")*/
-	/*continue*/
-	/*}*/
-
-	/*// 4. 読み込んだ import の env を適用*/
-	/*fcfg.ApplyEnvs(os, logger, opts.Separator)*/
-
-	/*// 5. cfg に集約*/
-	/*cfg.Envs = append(cfg.Envs, fcfg.Envs...)*/
-
-	/*// Program.Path は未設定なら設定*/
-	/*if cfg.Program.Path == "" {*/
-	/*cfg.Program.Path = fcfg.Program.Path*/
-	/*}*/
-	/*// Program.Args は append*/
-	/*cfg.Program.Args = append(cfg.Program.Args, fcfg.Program.Args...)*/
-
-	/*// Configs も append*/
-	/*cfg.Configs = append(cfg.Configs, fcfg.Configs...)*/
-	/*}*/
 
 	for _, f := range tagData.ImportConfigFiles {
 		fcfg, err := ReadOrFallbackRecursive(opts, os, logger, f)

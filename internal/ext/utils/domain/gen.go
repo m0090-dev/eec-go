@@ -209,41 +209,6 @@ func GenUnixWrapScript() string {
 	return unixWrapEECScript
 }
 
-/*func GenWrapScript(os ext.OS,logger ext.Logger) {*/
-/*scriptDir := ext.DEFAULT_SCRIPT_DIR*/
-/*var wrapScriptContent string*/
-/*var wrapScriptFileName string*/
-/*var wrapScriptFile string*/
-/*baseName := "eec"*/
-/*if runtime.GOOS == "windows" {*/
-/*wrapScriptContent = GenWindowsWrapScript()*/
-/*wrapScriptFileName = general.AddExtension(baseName, ".bat")*/
-/*} else {*/
-/*wrapScriptContent = GenUnixWrapScript()*/
-/*wrapScriptFileName  = baseName*/
-/*}*/
-/*wrapScriptFile = filepath.Join(scriptDir, wrapScriptFileName)*/
-/*// ディレクトリがなければ作成*/
-/*if err := os.FS.MkdirAll(scriptDir, 0755); err != nil {*/
-/*logger.Error().Err(err).Msg("Failed to create utils script directory")*/
-/*return*/
-/*}*/
-/*file, err := os.FS.Create(wrapScriptFile)*/
-/*if err != nil {*/
-/*logger.Error().Err(err).Str("file", wrapScriptFile).Msg("Failed to create file")*/
-/*return*/
-/*}*/
-
-/*func() {*/
-/*defer file.Close()*/
-/*_, err := file.WriteString(wrapScriptContent)*/
-/*if err != nil {*/
-/*return*/
-/*}*/
-/*}()*/
-
-/*}*/
-
 func GenWrapScript(os types.OS, logger interfaces.Logger) {
 	scriptDir := types.DEFAULT_SCRIPT_DIR
 	baseName := "eec"
