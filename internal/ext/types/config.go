@@ -486,9 +486,10 @@ func (c *Config) BuildEnvs(os OS, logger interfaces.Logger, baseEnv []string, se
 		existing := make(map[string]struct{})
 		merged := []string{}
 		isSystemList := (keyUpper == "PATH" || keyUpper == "TEMP" || keyUpper == "TMP")
+		if isListType || isSystemList {
+		
 		// a) 既存の値を登録
 		for _, v := range envMap[keyUpper] {
-			if isListType || isSystemList {
 				for _, part := range strings.Split(v, separator) {
 					part = strings.TrimSpace(part)
 					if part != "" {
@@ -498,15 +499,10 @@ func (c *Config) BuildEnvs(os OS, logger interfaces.Logger, baseEnv []string, se
 						}
 					}
 				}
-			} else {
-				merged = append(merged, v)
-			}
 		}
 
 		// b) 展開された新しい値を登録
 		for _, v := range expandedValues {
-
-			if isListType || isSystemList {
 				for _, part := range strings.Split(v, separator) {
 					part = strings.TrimSpace(part)
 					if part != "" {
@@ -516,9 +512,9 @@ func (c *Config) BuildEnvs(os OS, logger interfaces.Logger, baseEnv []string, se
 						}
 					}
 				}
-			} else {
-				merged = append(merged, v)
-			}
+		}
+		} else {
+			merged = expandedValues
 		}
 
 		// 4. 重要：envMap を即座に更新 (これで次のループの展開で参照可能になる)
