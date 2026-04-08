@@ -60,46 +60,6 @@ func (d DefaultExecutor) StartProcess(path string, args []string, env []string, 
 	return cmd, nil
 }
 
-/*
-func (d DefaultExecutor) StartProcess(path string, args []string, env []string, stdin, stdout, stderr *os.File, hideWindow bool) (*exec.Cmd, error) {
-	var cmd *exec.Cmd
-
-	switch runtime.GOOS {
-	case "windows":
-		if _, err := exec.LookPath("cmd.exe"); err == nil {
-			cmdArgs := append([]string{"/C", path}, args...)
-			cmd = exec.Command("cmd.exe", cmdArgs...)
-			if hideWindow {
-				cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-			} else {
-				cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: false, CreationFlags: 0x00000010}
-			}
-		} else {
-			return nil, fmt.Errorf("cmd.exe not found in PATH")
-		}
-	case "linux", "darwin":
-		if _, err := exec.LookPath("sh"); err == nil {
-			cmdArgs := append([]string{"-c", path}, args...)
-			cmd = exec.Command("sh", cmdArgs...)
-		} else {
-			return nil, fmt.Errorf("sh not found in PATH")
-		}
-	default:
-		cmd = exec.Command(path, args...)
-	}
-
-	cmd.Env = env
-	if stdin != nil { cmd.Stdin = stdin }
-	if stdout != nil { cmd.Stdout = stdout }
-	if stderr != nil { cmd.Stderr = stderr }
-
-	if err := cmd.Start(); err != nil {
-		return nil, err
-	}
-	return cmd, nil
-}
-*/
-
 func (d DefaultExecutor) WaitProcess(proc *os.Process, timeout time.Duration) error {
 	// We need the *Cmd to call Wait; but we only have *os.Process here.
 	// Simpler: poll process state.

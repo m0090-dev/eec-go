@@ -12,95 +12,6 @@ import (
 	"syscall"
 )
 
-/*
-// ReadOrFallback is the same helper behavior as original core.
-func ReadOrFallback(opts types.RunOptions, os types.OS, logger interfaces.Logger, name string) (types.Config, error) {
-	var cfg types.Config
-	if os.FS.FileExists(name) {
-		return types.ReadConfig(os, logger, name)
-	}
-	tagData, err := types.ReadTagData(os, logger, name)
-	if err != nil {
-		return cfg, err
-	}
-	env := os.Env.Environ()
-	for _, f := range tagData.ImportConfigFiles {
-		fcfg, err := ReadOrFallbackRecursive(opts, os, logger, f)
-		if err != nil {
-			logger.Warn().Str("import", f).Err(err).Msg("failed to read import config")
-			continue
-		}
-
-		env = fcfg.BuildEnvs(os, logger, env, opts.Separator)
-	}
-
-	// env → cfg.Envs に変換
-	cfg.Envs = nil
-	for _, e := range env {
-		parts := strings.SplitN(e, "=", 2)
-		if len(parts) == 2 {
-			cfg.Envs = append(cfg.Envs, types.Environ{
-				Key:   parts[0],
-				Value: parts[1],
-			})
-		}
-	}
-	return cfg, nil
-}
-
-
-
-
-
-
-
-
-func ReadOrFallbackRecursive(opts types.RunOptions, os types.OS, logger interfaces.Logger, name string) (types.Config, error) {
-	var cfg types.Config
-
-	// 1. ファイルとして存在する場合はそのまま読み込む
-	if os.FS.FileExists(name) {
-		return types.ReadConfig(os, logger, name)
-	}
-
-	// 2. タグデータとして読み込む
-	tagData, err := types.ReadTagData(os, logger, name)
-	if err != nil {
-		return cfg, err
-	}
-	env := os.Env.Environ()
-
-	for _, f := range tagData.ImportConfigFiles {
-		fcfg, err := ReadOrFallbackRecursive(opts, os, logger, f)
-		if err != nil {
-			logger.Warn().Str("import", f).Err(err).Msg("failed to read import config")
-			continue
-		}
-
-		env = fcfg.BuildEnvs(os, logger, env, opts.Separator)
-
-		if cfg.Program.Path == "" {
-			cfg.Program.Path = fcfg.Program.Path
-		}
-		cfg.Program.Args = append(cfg.Program.Args, fcfg.Program.Args...)
-		cfg.Configs = append(cfg.Configs, fcfg.Configs...)
-	}
-
-	// ★ env → cfg.Envs に統一
-	cfg.Envs = nil
-	for _, e := range env {
-		parts := strings.SplitN(e, "=", 2)
-		if len(parts) == 2 {
-			cfg.Envs = append(cfg.Envs, types.Environ{
-				Key:   parts[0],
-				Value: parts[1],
-			})
-		}
-	}
-	return cfg, nil
-}
-*/
-
 func ReadOrFallback(opts types.RunOptions, os types.OS, logger interfaces.Logger, name string) (types.Config, error) {
 	return readOrFallbackInternal(opts, os, logger, name, make(map[string]bool))
 }
@@ -246,8 +157,14 @@ func LaunchDeleter(os types.OS, logger interfaces.Logger, opts types.RunOptions)
 
 	running, err := IsProcessRunning(os, logger, types.DEFAULT_DELETER_EXECUTE_NAME)
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to check process")
-		return fmt.Errorf("failed to check process: %w", err)
+		if os.Env.GOOS() == "linux" || os.Env.GOOS() == "darwin" {
+			// Unix系ならエラーをログに出すだけで、running = false として続行
+			logger.Debug().Err(err).Msg("process check failed, assuming not running")
+			running = false
+		} else {
+			logger.Error().Err(err).Msg("failed to check process")
+			return fmt.Errorf("failed to check process: %w", err)
+		}
 	}
 
 	if running {

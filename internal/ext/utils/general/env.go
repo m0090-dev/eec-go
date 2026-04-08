@@ -68,57 +68,6 @@ func getAllEnvsFromAny(env interfaces.Env, fs interfaces.FS, envMap any) []strin
 	return result
 }
 
-/*
-	func ExpandEnvAndCommands(env interfaces.Env,fs interfaces.FS,input string, envMap any) string {
-		sep := string(env.PathListSeparator())
-
-		// 1. 環境変数の展開: ${VAR}
-		reVar := regexp.MustCompile(`\$\{([^}]+)\}`)
-		result := reVar.ReplaceAllStringFunc(input, func(match string) string {
-			submatches := reVar.FindStringSubmatch(match)
-			if len(submatches) == 2 {
-				// envMap (any型) から値を探す
-				vals := getValuesFromAny(envMap, submatches[1])
-				if len(vals) > 0 {
-					return strings.Join(vals, sep)
-				}
-				// なければOS環境変数
-				if val, ok := env.LookupEnv(submatches[1]); ok {
-					return val
-				}
-			}
-			return match
-		})
-
-		// 2. コマンド展開: $(cmd)
-		reCmd := regexp.MustCompile(`\$\((.+?)\)`)
-		result = reCmd.ReplaceAllStringFunc(result, func(match string) string {
-			submatches := reCmd.FindStringSubmatch(match)
-			if len(submatches) == 2 {
-				cmdLine := strings.TrimSpace(submatches[1])
-				var cmd *exec.Cmd
-				if runtime.GOOS == "windows" {
-					cmd = exec.Command("cmd", "/c", cmdLine)
-				} else {
-					cmd = exec.Command("sh", "-c", cmdLine)
-				}
-
-				// これまでの全環境変数をコマンド実行環境に注入
-				currentEnv := env.Environ()
-				currentEnv = append(currentEnv, getAllEnvsFromAny(env,fs,envMap)...)
-				cmd.Env = currentEnv
-
-				out, err := cmd.Output()
-				if err != nil {
-					return ""
-				}
-				return strings.TrimSpace(string(out))
-			}
-			return match
-		})
-		return result
-	}
-*/
 func replaceVariables(env interfaces.Env, fs interfaces.FS, input string, envMap any) string {
 	sep := env.PathListSeparator()
 	reVar := regexp.MustCompile(`\$\{([^}]+)\}`)

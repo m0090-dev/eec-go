@@ -53,39 +53,6 @@ func (d DefaultExecutor) StartProcess(path string, args []string, env []string, 
 	return cmd, nil
 }
 
-/*
-func (d DefaultExecutor) StartProcess(path string, args []string, env []string, stdin, stdout, stderr *os.File, hideWindow bool) (*exec.Cmd, error) {
-	var cmd *exec.Cmd
-
-	switch runtime.GOOS {
-	case "windows":
-		// Windows の場合、cmd.exe が存在するか確認
-		if _, err := exec.LookPath("cmd.exe"); err == nil {
-			cmd = exec.Command("cmd.exe", "/C", path+" "+strings.Join(args, " "))
-		}
-	case "linux", "darwin":
-		// Unix系の場合、sh が存在するか確認
-		if _, err := exec.LookPath("sh"); err == nil {
-			cmd = exec.Command("sh", "-c", path+" "+strings.Join(args, " "))
-		}
-	}
-
-	// どちらも存在しない場合はそのまま実行
-	if cmd == nil {
-		cmd = exec.Command(path, args...)
-	}
-
-	cmd.Env = env
-	if stdin != nil { cmd.Stdin = stdin }
-	if stdout != nil { cmd.Stdout = stdout }
-	if stderr != nil { cmd.Stderr = stderr }
-	if err := cmd.Start(); err != nil {
-		return nil, err
-	}
-	return cmd, nil
-}
-*/
-
 func (d DefaultExecutor) WaitProcess(proc *os.Process, timeout time.Duration) error {
 	// We need the *Cmd to call Wait; but we only have *os.Process here.
 	// Simpler: poll process state.
