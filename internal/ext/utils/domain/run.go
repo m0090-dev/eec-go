@@ -59,27 +59,32 @@ func readOrFallbackInternal(opts types.RunOptions, os types.OS, logger interface
 		}
 	}
 	*/
-	// readOrFallbackInternal の修正（理想形）
+
+// readOrFallbackInternal の修正（完全版）
 cfg.Envs = nil
 for _, e := range env {
     parts := strings.SplitN(e, "=", 2)
     if len(parts) == 2 {
-        key := parts[0]
-        val := parts[1]
+        key, val := parts[0], parts[1]
 
-        // ここで単なる文字列にせず、
-        // 「もしセパレータが含まれているなら、リストとして保持する」
-        // これによって BuildEnvs に渡る時に interface{} の中身が []string になる
-        if strings.Contains(val, opts.Separator) {
+        // 1. セパレータを確定させる（他と同じロジック）
+        sep := opts.Separator
+        if sep == "" {
+            sep = string(os.PathListSeparator) // Windowsなら ";"
+        }
+
+        // 2. 確定したセパレータ（絶対に空じゃない）で判定・分割
+        if strings.Contains(val, sep) {
             cfg.Envs = append(cfg.Envs, types.Environ{
                 Key: key, 
-                Value: strings.Split(val, opts.Separator), 
+                Value: strings.Split(val, sep), 
             })
         } else {
             cfg.Envs = append(cfg.Envs, types.Environ{Key: key, Value: val})
         }
     }
 }
+
 	return cfg, nil
 }
 
