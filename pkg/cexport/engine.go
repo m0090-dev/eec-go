@@ -12,17 +12,17 @@ typedef struct {
 */
 import "C"
 import (
-	"time"
-	"sync"
-	"unsafe"
 	"context"
 	"github.com/m0090-dev/eec/internal/core"
 	"github.com/m0090-dev/eec/internal/ext/types"
+	"sync"
+	"time"
+	"unsafe"
 )
 
 // ----------------- ハンドル管理 -----------------
 var (
-	engineMap = map[uintptr]*core.Engine{}
+	engineMap         = map[uintptr]*core.Engine{}
 	nextID    uintptr = 1
 	engineMu  sync.Mutex
 )
@@ -65,7 +65,7 @@ func Engine_Run(p C.PEngine,
 	tag *C.char,
 	imports C.CStringArray,
 	waitTimeoutMs C.int,
-	hideWindow C.int,deleterPath *C.char,deleterHideWindow C.int) C.int {
+	hideWindow C.int, deleterPath *C.char, deleterHideWindow C.int) C.int {
 
 	id := uintptr(unsafe.Pointer(p))
 	e, ok := getEngine(id)
@@ -77,20 +77,20 @@ func Engine_Run(p C.PEngine,
 	goConfigFile := C.GoString(configFile)
 	goProgram := C.GoString(program)
 	goTag := C.GoString(tag)
-	var goHideWindow bool 
+	var goHideWindow bool
 	if hideWindow == 1 {
-		goHideWindow = true;
+		goHideWindow = true
 	} else {
-		goHideWindow = false;
+		goHideWindow = false
 	}
 
 	goDeleterPath := C.GoString(deleterPath)
 	var goDeleterHideWindow bool
 
 	if deleterHideWindow == 1 {
-		goDeleterHideWindow = true;
+		goDeleterHideWindow = true
 	} else {
-		goDeleterHideWindow = false;
+		goDeleterHideWindow = false
 	}
 
 	// programArgs 配列変換
@@ -111,14 +111,14 @@ func Engine_Run(p C.PEngine,
 
 	// RunOptions を構築
 	opts := types.RunOptions{
-		ConfigFile:  goConfigFile,
-		Program:     goProgram,
-		ProgramArgs: goProgramArgs,
-		Tag:         goTag,
-		Imports:     goImports,
-		WaitTimeout: time.Duration(waitTimeoutMs) * time.Millisecond,
-		HideWindow: goHideWindow,
-		DeleterPath:goDeleterPath,
+		ConfigFile:        goConfigFile,
+		Program:           goProgram,
+		ProgramArgs:       goProgramArgs,
+		Tag:               goTag,
+		Imports:           goImports,
+		WaitTimeout:       time.Duration(waitTimeoutMs) * time.Millisecond,
+		HideWindow:        goHideWindow,
+		DeleterPath:       goDeleterPath,
 		DeleterHideWindow: goDeleterHideWindow,
 	}
 
@@ -128,14 +128,6 @@ func Engine_Run(p C.PEngine,
 	}
 	return 0
 }
-
-
-
-
-
-
-
-
 
 //export Engine_TagAdd
 func Engine_TagAdd(p C.PEngine, name *C.char, configFile *C.char) C.int {
