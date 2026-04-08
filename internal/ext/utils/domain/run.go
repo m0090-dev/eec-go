@@ -50,6 +50,7 @@ func readOrFallbackInternal(opts types.RunOptions, os types.OS, logger interface
 	}
 
 	// env → cfg.Envs に変換 (以下、既存ロジック)
+	/*
 	cfg.Envs = nil
 	for _, e := range env {
 		parts := strings.SplitN(e, "=", 2)
@@ -57,6 +58,28 @@ func readOrFallbackInternal(opts types.RunOptions, os types.OS, logger interface
 			cfg.Envs = append(cfg.Envs, types.Environ{Key: parts[0], Value: parts[1]})
 		}
 	}
+	*/
+	// readOrFallbackInternal の修正（理想形）
+cfg.Envs = nil
+for _, e := range env {
+    parts := strings.SplitN(e, "=", 2)
+    if len(parts) == 2 {
+        key := parts[0]
+        val := parts[1]
+
+        // ここで単なる文字列にせず、
+        // 「もしセパレータが含まれているなら、リストとして保持する」
+        // これによって BuildEnvs に渡る時に interface{} の中身が []string になる
+        if strings.Contains(val, opts.Separator) {
+            cfg.Envs = append(cfg.Envs, types.Environ{
+                Key: key, 
+                Value: strings.Split(val, opts.Separator), 
+            })
+        } else {
+            cfg.Envs = append(cfg.Envs, types.Environ{Key: key, Value: val})
+        }
+    }
+}
 	return cfg, nil
 }
 
