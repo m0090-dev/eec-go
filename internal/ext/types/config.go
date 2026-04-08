@@ -485,27 +485,36 @@ func (c *Config) BuildEnvs(os OS, logger interfaces.Logger, baseEnv []string, se
 
 		// a) 既存の値を登録
 		for _, v := range envMap[keyUpper] {
-			for _, part := range strings.Split(v, separator) {
-				part = strings.TrimSpace(part)
-				if part != "" {
-					if _, ok := existing[part]; !ok {
-						existing[part] = struct{}{}
-						merged = append(merged, part)
+			if keyUpper == "PATH" {
+				for _, part := range strings.Split(v, separator) {
+					part = strings.TrimSpace(part)
+					if part != "" {
+						if _, ok := existing[part]; !ok {
+							existing[part] = struct{}{}
+							merged = append(merged, part)
+						}
 					}
 				}
+			} else {
+				merged = append(merged, v)
 			}
 		}
 
 		// b) 展開された新しい値を登録
 		for _, v := range expandedValues {
-			for _, part := range strings.Split(v, separator) {
-				part = strings.TrimSpace(part)
-				if part != "" {
-					if _, ok := existing[part]; !ok {
-						existing[part] = struct{}{}
-						merged = append(merged, part)
+
+			if keyUpper == "PATH" {
+				for _, part := range strings.Split(v, separator) {
+					part = strings.TrimSpace(part)
+					if part != "" {
+						if _, ok := existing[part]; !ok {
+							existing[part] = struct{}{}
+							merged = append(merged, part)
+						}
 					}
 				}
+			} else {
+				merged = append(merged, v)
 			}
 		}
 
