@@ -458,6 +458,7 @@ func (c *Config) BuildEnvs(os OS, logger interfaces.Logger, baseEnv []string, se
 		// 1. まず「生の値 (raw)」をスライスとして取り出す
 		var rawStrings []string
 		isListType := false
+		/*
 		switch val := env.Value.(type) {
 		case string:
 			rawStrings = []string{val}
@@ -473,6 +474,20 @@ func (c *Config) BuildEnvs(os OS, logger interfaces.Logger, baseEnv []string, se
 			logger.Warn().Interface("env", env).Msg("無効な値タイプ")
 			continue
 		}
+		*/
+		rv := reflect.ValueOf(env.Value)
+if rv.Kind() == reflect.Slice || rv.Kind() == reflect.Array {
+    isListType = true
+    for i := 0; i < rv.Len(); i++ {
+        // 中身を文字列に変換して追加
+        rawStrings = append(rawStrings, fmt.Sprint(rv.Index(i).Interface()))
+    }
+} else if s, ok := env.Value.(string); ok {
+    rawStrings = []string{s}
+    isListType = false
+} else {
+    continue
+}
 
 		// 2. 重要：ここまでの envMap（上の行の変数が反映済み）を使って展開する
 		var expandedValues []string
