@@ -488,9 +488,11 @@ if rv.Kind() == reflect.Slice || rv.Kind() == reflect.Array {
 } else {
     continue
 }
-		if keyUpper == "PATH" {
-    	fmt.Printf("DEBUG: Processing PATH from file. isListType=%v, RawValues=%v\n", isListType, rawStrings)
-	}
+	logger.Debug().
+			Str("key", keyUpper).
+			Bool("isListType", isListType).
+			Interface("rawValues", rawStrings).
+			Msg("Processing environment variable")
 
 		// 2. 重要：ここまでの envMap（上の行の変数が反映済み）を使って展開する
 		var expandedValues []string
