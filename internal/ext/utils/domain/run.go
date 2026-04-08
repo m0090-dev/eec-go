@@ -70,7 +70,7 @@ for _, e := range env {
         // 1. セパレータを確定させる（他と同じロジック）
         sep := opts.Separator
         if sep == "" {
-            sep = string(os.PathListSeparator) // Windowsなら ";"
+            sep = string(os.Env.PathListSeparator()) // Windowsなら ";"
         }
 
         // 2. 確定したセパレータ（絶対に空じゃない）で判定・分割
