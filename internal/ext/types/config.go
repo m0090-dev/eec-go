@@ -457,10 +457,13 @@ func (c *Config) BuildEnvs(os OS, logger interfaces.Logger, baseEnv []string, se
 
 		// 1. まず「生の値 (raw)」をスライスとして取り出す
 		var rawStrings []string
+		isListType := false
 		switch val := env.Value.(type) {
 		case string:
 			rawStrings = []string{val}
+			isListType = false
 		case []interface{}:
+		    isListType = true
 			for _, v := range val {
 				if s, ok := v.(string); ok {
 					rawStrings = append(rawStrings, s)
@@ -482,10 +485,10 @@ func (c *Config) BuildEnvs(os OS, logger interfaces.Logger, baseEnv []string, se
 		// 3. 既存値と展開後の新規値をマージして重複排除
 		existing := make(map[string]struct{})
 		merged := []string{}
-
+		isSystemList := (keyUpper == "PATH" || keyUpper == "TEMP" || keyUpper == "TMP")
 		// a) 既存の値を登録
 		for _, v := range envMap[keyUpper] {
-			if keyUpper == "PATH" {
+			if isListType || isSystemList {
 				for _, part := range strings.Split(v, separator) {
 					part = strings.TrimSpace(part)
 					if part != "" {
@@ -503,7 +506,7 @@ func (c *Config) BuildEnvs(os OS, logger interfaces.Logger, baseEnv []string, se
 		// b) 展開された新しい値を登録
 		for _, v := range expandedValues {
 
-			if keyUpper == "PATH" {
+			if isListType || isSystemList {
 				for _, part := range strings.Split(v, separator) {
 					part = strings.TrimSpace(part)
 					if part != "" {
