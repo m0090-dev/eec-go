@@ -16,7 +16,16 @@ type DefaultExecutor struct{}
 
 func (d DefaultExecutor) Command(path string, args []string, env []string, stdin, stdout, stderr *os.File, hideWindow bool) (*exec.Cmd, error) {
 	var cmd *exec.Cmd
-	cmd = exec.Command(path, args...)
+
+	// sh -c 経由で実行
+	if _, err := exec.LookPath("sh"); err == nil {
+		cmdArgs := append([]string{"-c", path}, args...)
+		cmd = exec.Command("sh", cmdArgs...)
+	} else {
+		// sh すら無い環境用（一応）
+		cmd = exec.Command(path, args...)
+	}
+
 	cmd.Env = env
 	if stdin != nil {
 		cmd.Stdin = stdin

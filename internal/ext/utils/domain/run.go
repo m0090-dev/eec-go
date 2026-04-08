@@ -256,7 +256,7 @@ func LaunchDeleter(os types.OS, logger interfaces.Logger, opts types.RunOptions)
 		logger.Debug().Msgf("[%s] を起動します...", deleterPath)
 		var pid int
 		var execCmd *exec.Cmd
-		if runtime.GOOS == "windows" {
+		if os.Env.GOOS() == "windows" {
 			var out, errOut *gos.File
 			if !deleterHideWindow {
 				out, errOut = os.Console.Stdout(), os.Console.Stderr()
