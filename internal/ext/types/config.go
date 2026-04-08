@@ -493,7 +493,10 @@ if rv.Kind() == reflect.Slice || rv.Kind() == reflect.Array {
 			Bool("isListType", isListType).
 			Interface("rawValues", rawStrings).
 			Msg("Processing environment variable")
-
+		if keyUpper == "PATH" {
+    fmt.Printf("[Check] Key: %s | isListType: %v | RawLen: %d | Data: %v\n", 
+        keyUpper, isListType, len(rawStrings), rawStrings)
+}
 		// 2. 重要：ここまでの envMap（上の行の変数が反映済み）を使って展開する
 		var expandedValues []string
 		for _, raw := range rawStrings {
