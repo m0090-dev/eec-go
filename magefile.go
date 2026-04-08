@@ -93,6 +93,7 @@ func BuildCLI(mode string) error {
 func BuildCLIRelease() error { return BuildCLI("release") }
 func BuildCLIDebug() error   { return BuildCLI("debug") }
 
+
 /*// --- GUI build ---*/
 /*func BuildGUI(mode string) error {*/
 /*if mode == "" {*/
