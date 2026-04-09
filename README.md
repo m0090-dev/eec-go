@@ -147,7 +147,7 @@ Effect:
 - Manage complex multi-language setups through configuration files and tags
 - Improve usability through generated scripts
 - Support safe and flexible workflows with REPL and restart features
-- Automate building of CLI, GUI, and libraries via `mage`
+- Automate building of CLI, and libraries via `mage`
 
 ---
 
