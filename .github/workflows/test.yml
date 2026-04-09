@@ -1,0 +1,50 @@
+name: Test
+
+on:
+#  push:
+    #branches: [ main]
+  #pull_request:
+    #branches: [ main ]
+  workflow_dispatch: 
+    description: "将来的なテスト用"
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      # 1. ロジックのテスト (Mockを使用したテスト)
+      - name: Run Go Unit Tests
+        run: go test -v ./...
+
+      # 2. Mageのインストール (ビルド用)
+      - name: Install Mage
+        run: go install github.com/magefile/mage@latest
+
+      # 3. 実際にビルドして eec-test-configs を叩く (インテグレーションテスト)
+      - name: Build CLI
+        run: |
+          export PATH=$PATH:$(go env GOPATH)/bin
+          mage BuildCLIRelease
+
+      - name: Run Integration Tests (CLI check)
+        shell: bash
+        run: |
+          # ビルドされたバイナリへのパスを通す
+          export PATH=$PATH:$(pwd)/build
+          
+          echo "=== Testing with JSON config ==="
+          eec --config eec-test-configs/test.json --tag dev-test info
+          
+          echo "=== Testing with TOML config (PATH Merge Check) ==="
+          # 期待したパスが含まれているか grep 等で検証する
+          # 例: eec の出力をキャプチャして中身をチェックするスクリプトを回す

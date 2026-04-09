@@ -10,10 +10,10 @@ import (
 	"github.com/pelletier/go-toml/v2"
 	"gopkg.in/yaml.v3"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"runtime"
 	"strings"
-	"reflect"
 )
 
 type Config struct {
@@ -458,45 +458,24 @@ func (c *Config) BuildEnvs(os OS, logger interfaces.Logger, baseEnv []string, se
 		// 1. まず「生の値 (raw)」をスライスとして取り出す
 		var rawStrings []string
 		isListType := false
-		/*
-		switch val := env.Value.(type) {
-		case string:
-			rawStrings = []string{val}
-			isListType = false
-		case []interface{}:
+		rv := reflect.ValueOf(env.Value)
+		if rv.Kind() == reflect.Slice || rv.Kind() == reflect.Array {
 			isListType = true
-			for _, v := range val {
-				if s, ok := v.(string); ok {
-					rawStrings = append(rawStrings, s)
-				}
+			for i := 0; i < rv.Len(); i++ {
+				// 中身を文字列に変換して追加
+				rawStrings = append(rawStrings, fmt.Sprint(rv.Index(i).Interface()))
 			}
-		default:
-			logger.Warn().Interface("env", env).Msg("無効な値タイプ")
+		} else if s, ok := env.Value.(string); ok {
+			rawStrings = []string{s}
+			isListType = false
+		} else {
 			continue
 		}
-		*/
-		rv := reflect.ValueOf(env.Value)
-if rv.Kind() == reflect.Slice || rv.Kind() == reflect.Array {
-    isListType = true
-    for i := 0; i < rv.Len(); i++ {
-        // 中身を文字列に変換して追加
-        rawStrings = append(rawStrings, fmt.Sprint(rv.Index(i).Interface()))
-    }
-} else if s, ok := env.Value.(string); ok {
-    rawStrings = []string{s}
-    isListType = false
-} else {
-    continue
-}
-	logger.Debug().
+		logger.Debug().
 			Str("key", keyUpper).
 			Bool("isListType", isListType).
 			Interface("rawValues", rawStrings).
 			Msg("Processing environment variable")
-		if keyUpper == "PATH" {
-    fmt.Printf("[Check] Key: %s | isListType: %v | RawLen: %d | Data: %v\n", 
-        keyUpper, isListType, len(rawStrings), rawStrings)
-}
 		// 2. 重要：ここまでの envMap（上の行の変数が反映済み）を使って展開する
 		var expandedValues []string
 		for _, raw := range rawStrings {
@@ -508,8 +487,6 @@ if rv.Kind() == reflect.Slice || rv.Kind() == reflect.Array {
 		// 3. 既存値と展開後の新規値をマージして重複排除
 		existing := make(map[string]struct{})
 		merged := []string{}
-		// 場合によっては使用
-		//isSystemList := (keyUpper == "PATH" || keyUpper == "TEMP" || keyUpper == "TMP")
 		if isListType {
 
 			// a) 既存の値を登録
