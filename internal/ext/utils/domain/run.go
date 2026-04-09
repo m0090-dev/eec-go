@@ -50,40 +50,30 @@ func readOrFallbackInternal(opts types.RunOptions, os types.OS, logger interface
 	}
 
 	// env → cfg.Envs に変換 (以下、既存ロジック)
-	/*
+
 	cfg.Envs = nil
 	for _, e := range env {
 		parts := strings.SplitN(e, "=", 2)
 		if len(parts) == 2 {
-			cfg.Envs = append(cfg.Envs, types.Environ{Key: parts[0], Value: parts[1]})
+			key, val := parts[0], parts[1]
+
+			// 1. セパレータを確定させる
+			sep := opts.Separator
+			if sep == "" {
+				sep = string(os.Env.PathListSeparator()) // Windowsなら ";"
+			}
+
+			// 2. 確定したセパレータで判定・分割
+			if strings.Contains(val, sep) {
+				cfg.Envs = append(cfg.Envs, types.Environ{
+					Key:   key,
+					Value: strings.Split(val, sep),
+				})
+			} else {
+				cfg.Envs = append(cfg.Envs, types.Environ{Key: key, Value: val})
+			}
 		}
 	}
-	*/
-
-// readOrFallbackInternal の修正（完全版）
-cfg.Envs = nil
-for _, e := range env {
-    parts := strings.SplitN(e, "=", 2)
-    if len(parts) == 2 {
-        key, val := parts[0], parts[1]
-
-        // 1. セパレータを確定させる（他と同じロジック）
-        sep := opts.Separator
-        if sep == "" {
-            sep = string(os.Env.PathListSeparator()) // Windowsなら ";"
-        }
-
-        // 2. 確定したセパレータ（絶対に空じゃない）で判定・分割
-        if strings.Contains(val, sep) {
-            cfg.Envs = append(cfg.Envs, types.Environ{
-                Key: key, 
-                Value: strings.Split(val, sep), 
-            })
-        } else {
-            cfg.Envs = append(cfg.Envs, types.Environ{Key: key, Value: val})
-        }
-    }
-}
 
 	return cfg, nil
 }

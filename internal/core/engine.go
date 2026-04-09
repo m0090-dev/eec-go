@@ -214,10 +214,6 @@ func (e *Engine) Info() error {
 	return nil
 }
 
-func (e *Engine) Repl() error {
-	return nil
-}
-
 // Tag-related core functions (create, list, delete).
 func (e *Engine) TagAdd(name string, tag types.TagData) error {
 	tagName := name
@@ -340,10 +336,6 @@ func (e *Engine) loadTempData() (types.TempData, string, error) {
 	}
 
 	return td, tmpFilePath, nil
-}
-
-func (e *Engine) Restart() error {
-	return nil
 }
 
 func (e *Engine) TagRemove(name string) error {
