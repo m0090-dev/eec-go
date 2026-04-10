@@ -14,15 +14,15 @@ import (
 
 func init() {
 	//fmt.Printf("Build mode: %s\n",types.BuildMode)
-	
+
 	// debug
 	if types.LogMode == "debug" {
-	  zerolog.SetGlobalLevel(zerolog.DebugLevel)
-        // release
-  	} else {
-	  zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	  subcmd.HideWindowRunFlag =  true
-	  subcmd.DeleterHideWindowRunFlag = true
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+		// release
+	} else {
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+		subcmd.HideWindowRunFlag = true
+		subcmd.DeleterHideWindowRunFlag = true
 	}
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout})
 }

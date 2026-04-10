@@ -8,7 +8,7 @@ With `eec`, you can:
 - Group multiple environments under "tags" for easy access  
 - Generate utility scripts for quick launching  
 - Use interactive or restart modes for flexible workflow  
-- Build the CLI, GUI, and libraries using `mage` (`mage buildcli`, `mage buildgui`, `mage buildlib`)
+- Build the CLI, and libraries using `mage` (`mage buildcli`, `mage buildlib`)
 
 ---
 
@@ -20,7 +20,6 @@ With `eec`, you can:
 - Interactive REPL and restart functionality with state management
 - Build automation using `mage`:
   - `mage buildcli debug` / `mage buildcli release`
-  - `mage buildgui debug` / `mage buildgui release`
   - `mage buildlib debug` / `mage buildlib release`
   - **Note:** On Windows, `GOOS=linux` is **not supported** for `mage buildlib`
 
@@ -148,7 +147,7 @@ Effect:
 - Manage complex multi-language setups through configuration files and tags
 - Improve usability through generated scripts
 - Support safe and flexible workflows with REPL and restart features
-- Automate building of CLI, GUI, and libraries via `mage`
+- Automate building of CLI, and libraries via `mage`
 
 ---
 

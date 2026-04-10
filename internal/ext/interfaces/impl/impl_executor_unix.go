@@ -8,39 +8,36 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"runtime"
-	"strings"
 	"time"
 )
 
 // DefaultExecutor uses os/exec
 type DefaultExecutor struct{}
 
-func (d DefaultExecutor) StartProcess(path string, args []string, env []string, stdin, stdout, stderr *os.File, hideWindow bool) (*exec.Cmd, error) {
+func (d DefaultExecutor) Command(path string, args []string, env []string, stdin, stdout, stderr *os.File, hideWindow bool) (*exec.Cmd, error) {
 	var cmd *exec.Cmd
-
-	switch runtime.GOOS {
-	case "windows":
-		// Windows の場合、cmd.exe が存在するか確認
-		if _, err := exec.LookPath("cmd.exe"); err == nil {
-			cmd = exec.Command("cmd.exe", "/C", path+" "+strings.Join(args, " "))
-		}
-	case "linux", "darwin":
-		// Unix系の場合、sh が存在するか確認
-		if _, err := exec.LookPath("sh"); err == nil {
-			cmd = exec.Command("sh", "-c", path+" "+strings.Join(args, " "))
-		}
-	}
-
-	// どちらも存在しない場合はそのまま実行
-	if cmd == nil {
-		cmd = exec.Command(path, args...)
-	}
-
+	cmd = exec.Command(path, args...)
 	cmd.Env = env
-	cmd.Stdin = stdin
-	cmd.Stdout = stdout
-	cmd.Stderr = stderr
+	if stdin != nil {
+		cmd.Stdin = stdin
+	}
+	if stdout != nil {
+		cmd.Stdout = stdout
+	}
+	if stderr != nil {
+		cmd.Stderr = stderr
+	}
+
+	return cmd, nil
+}
+
+// StartProcess: Command を呼んでから Start する
+func (d DefaultExecutor) StartProcess(path string, args []string, env []string, stdin, stdout, stderr *os.File, hideWindow bool) (*exec.Cmd, error) {
+	cmd, err := d.Command(path, args, env, stdin, stdout, stderr, hideWindow)
+	if err != nil {
+		return nil, err
+	}
+
 	if err := cmd.Start(); err != nil {
 		return nil, err
 	}

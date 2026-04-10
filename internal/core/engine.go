@@ -2,36 +2,26 @@
 package core
 
 import (
-	//"io"
-	//"strconv"
 	"bytes"
 	"context"
 	"encoding/gob"
 	"errors"
 	"fmt"
-	"os/exec"
-	"runtime"
-	"time"
-	//"syscall"
 	"github.com/google/uuid"
 	"github.com/m0090-dev/eec/internal/ext/interfaces"
 	"github.com/m0090-dev/eec/internal/ext/interfaces/impl"
 	"github.com/m0090-dev/eec/internal/ext/types"
 	"github.com/m0090-dev/eec/internal/ext/utils/domain"
 	"github.com/m0090-dev/eec/internal/ext/utils/general"
-	//"github.com/aymanbagabas/go-pty"
-	//"github.com/rs/zerolog/log"
-	//"os"
-	//"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
 // Engine is the core library entrypoint. It contains pluggable implementations
 // for executing commands and file operations so CLI can inject mocks for tests.
 type Engine struct {
-	OS types.OS
-	//PtyData types.PtyData
+	OS     types.OS
 	Logger interfaces.Logger
 }
 
@@ -99,7 +89,10 @@ func (e *Engine) Run(ctx context.Context, opts types.RunOptions) error {
 	// ----------------------*/
 	// ResolveRunOptions 呼び出し
 	// -----------------------*/
-	configFile, program, pArgs, finalEnv := domain.ResolveRunOptions(opts, tagData, e.OS, e.Logger)
+	configFile, program, pArgs, finalEnv, err := domain.ResolveRunOptions(opts, tagData, e.OS, e.Logger)
+	if err != nil {
+		return err // 循環参照などのエラーがあれば、ここで即座に終了
+	}
 	if program == "" {
 		return errors.New("no program specified")
 	}
@@ -136,9 +129,7 @@ func (e *Engine) Run(ctx context.Context, opts types.RunOptions) error {
 	// Start process
 	// -----------------------*/
 	var childPid int
-	var cmd *exec.Cmd
-
-	cmd, err = e.Executor().StartProcess(program, pArgs, finalEnv,
+	cmd, err := e.Executor().StartProcess(program, pArgs, finalEnv,
 		e.Console().Stdin(), e.Console().Stdout(), e.Console().Stderr(), opts.HideWindow)
 	if err != nil {
 		tmpFile.Close()
@@ -208,7 +199,6 @@ func (e *Engine) Run(ctx context.Context, opts types.RunOptions) error {
 // Gen performs generator-related core work (placeholder).
 func (e *Engine) GenScript() error {
 	domain.GenUtilsScript(e.OS, e.Logger)
-	//domain.GenWrapScript(e.OS, e.Logger)
 	return nil
 }
 
@@ -223,49 +213,6 @@ func (e *Engine) Info() error {
 	e.Logger.Info().Strs("infos", infos).Msg("eec Info messages")
 	return nil
 }
-
-func (e *Engine) Repl() error {
-	return nil
-}
-
-/*
-// Tag-related core functions (create, list, delete).
-func (e *Engine) TagAdd(name string, tag types.TagData) error {
-	tagName := name
-
-	// make configFile absolute if present
-	if tag.ConfigFile != "" {
-		if abs, err := filepath.Abs(tag.ConfigFile); err == nil {
-			tag.ConfigFile = abs
-		}
-	}
-
-	// -- デバッグ用 --
-	e.Logger.Debug().
-		Str("tagName", tagName).
-		Msg("")
-	e.Logger.Debug().
-		Str("configFileFlag", tag.ConfigFile).
-		Msg("")
-	e.Logger.Debug().
-		Str("programFlag", tag.Program).
-		Msg("")
-	e.Logger.Debug().
-		Str("programArgsFlag", strings.Join(tag.ProgramArgs, ", ")).
-		Msg("")
-	e.Logger.Debug().
-		Str("Import config files", strings.Join(tag.ImportConfigFiles, ", ")).
-		Msg("")
-	//
-
-	if err := tag.Write(e.OS, e.Logger, tagName); err != nil {
-		e.Logger.Error().Err(err).Msg("タグファイルの書き込みに失敗しました")
-		return fmt.Errorf("Failed to tag file")
-	}
-	e.Logger.Info().Str("Tag name", tagName).Msg("Tag added")
-	return nil
-}
-*/
 
 // Tag-related core functions (create, list, delete).
 func (e *Engine) TagAdd(name string, tag types.TagData) error {
@@ -389,87 +336,6 @@ func (e *Engine) loadTempData() (types.TempData, string, error) {
 	}
 
 	return td, tmpFilePath, nil
-}
-
-func (e *Engine) Restart() error {
-	// 1. manifest ファイルパス取得
-	tmpDir := e.FS().TempDir()
-	manifestPath := filepath.Join(tmpDir, "eec_manifest.txt")
-
-	// 2. manifest 読み込み
-	content, err := e.FS().ReadFile(manifestPath)
-	if err != nil {
-		e.Logger.Error().Err(err).Msg("failed to read manifest")
-		return fmt.Errorf("failed to read manifest: %w", err)
-	}
-
-	// 3. 先頭のファイルパス抽出
-	tmpFilePath := strings.TrimSpace(string(content))
-	if idx := strings.Index(tmpFilePath, " "); idx != -1 {
-		tmpFilePath = tmpFilePath[:idx]
-	}
-	if tmpFilePath == "" {
-		e.Logger.Error().Msg("manifest file is empty")
-		return fmt.Errorf("manifest file is empty")
-	}
-
-	// 4. TempData デコード
-	f, err := e.FS().Open(tmpFilePath)
-	if err != nil {
-		e.Logger.Debug().Err(err).Str("tempFile", tmpFilePath).Msg("cannot open temp file")
-		return fmt.Errorf("no temp file found for current ChildPID")
-	}
-	defer f.Close()
-
-	var td types.TempData
-	if err := gob.NewDecoder(f).Decode(&td); err != nil {
-		e.Logger.Error().Err(err).Str("tempFile", tmpFilePath).Msg("failed to decode temp data")
-		return fmt.Errorf("failed to decode temp data: %w", err)
-	}
-
-	// 5. 既存プロセス終了
-	if td.ChildPID != 0 {
-		running, err := domain.IsPIDRunning(e.OS, e.Logger, td.ChildPID)
-		if err != nil {
-			e.Logger.Warn().Err(err).Int("ChildPID", td.ChildPID).Msg("failed to check if child PID, continuing")
-		}
-		if running {
-			proc, err := e.Executor().FindProcess(td.ChildPID)
-			if err == nil && proc != nil {
-				if killErr := proc.Kill(); killErr != nil {
-					e.Logger.Warn().Err(killErr).Int("ChildPID", td.ChildPID).Msg("failed to kill old child process, continuing")
-				} else {
-					e.Logger.Info().Int("ChildPID", td.ChildPID).Msg("old child process killed")
-				}
-			}
-		} else {
-			e.Logger.Debug().Int("ChildPID", td.ChildPID).Msg("no existing child process found")
-		}
-	}
-
-	// 6. RunOptions 復元
-	opts := types.RunOptions{
-		ConfigFile:        td.ConfigFile,
-		Program:           td.Program,
-		ProgramArgs:       td.ProgramArgs,
-		Tag:               td.Tag,
-		Imports:           td.Imports,
-		WaitTimeout:       time.Duration(td.WaitTimeout) * time.Millisecond,
-		HideWindow:        td.HideWindow,
-		DeleterPath:       td.DeleterPath,
-		DeleterHideWindow: td.DeleterHideWindow,
-	}
-
-	// 7. 再起動処理
-
-	// 通常プロセスは Run で再実行
-	if err := e.Run(context.Background(), opts); err != nil {
-		e.Logger.Error().Err(err).Msg("failed to restart process")
-		return fmt.Errorf("failed to restart process: %w", err)
-	}
-
-	e.Logger.Info().Msg("process restarted successfully")
-	return nil
 }
 
 func (e *Engine) TagRemove(name string) error {

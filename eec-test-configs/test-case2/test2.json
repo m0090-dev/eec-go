@@ -1,0 +1,23 @@
+{
+  "configs": [
+    {
+      "description": "Path Array Merge Test (Standard eec format)"
+    }
+  ],
+  "envs": [
+    {
+      "PATH": [
+        "C:\\dummy\\test-path-array",
+        "D:\\another\\dummy-bin"
+      ]
+    }
+  ],
+  "program": {
+    "path": "pwsh",
+    "args": [
+      "-NoProfile",
+      "-Command",
+      "Write-Host '--- Merged PATH (Array Mode) ---'; $env:PATH"
+    ]
+  }
+}

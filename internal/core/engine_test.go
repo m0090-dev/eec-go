@@ -3,7 +3,7 @@ package core_test
 import (
 	"context"
 	"github.com/m0090-dev/eec/internal/core"
-	"github.com/m0090-dev/eec/internal/ext/interfaces"
+	"github.com/m0090-dev/eec/internal/ext/interfaces/impl"
 	"github.com/m0090-dev/eec/internal/ext/types"
 	"github.com/rs/zerolog/log"
 	"testing"
@@ -12,11 +12,11 @@ import (
 
 func TestEngineRun(t *testing.T) {
 	os := types.OS{
-		FS:          interfaces.OSFS{},
-		Executor:    interfaces.DefaultExecutor{},
-		Console:     interfaces.DefaultConsole{},
-		Env:         interfaces.OSEnv{},
-		CommandLine: interfaces.DefaultCommandLine{},
+		FS:          impl.OSFS{},
+		Executor:    impl.DefaultExecutor{},
+		Console:     impl.DefaultConsole{},
+		Env:         impl.OSEnv{},
+		CommandLine: impl.DefaultCommandLine{},
 	}
 	e := core.NewEngine(&os, nil)
 	opts := types.RunOptions{
@@ -30,7 +30,7 @@ func TestEngineRun(t *testing.T) {
 }
 func TestEngineTag(t *testing.T) {
 	e := core.NewEngine(nil, nil)
-	tagName := "うぇーい"
+	tagName := "う"
 	tagData := types.TagData{
 		ConfigFile:        "../test.toml",
 		ImportConfigFiles: []string{"dev"},

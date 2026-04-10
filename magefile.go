@@ -1,4 +1,3 @@
-
 //go:build mage
 
 package main
@@ -9,7 +8,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"runtime"
 )
 
 // デフォルトターゲット
@@ -95,72 +93,6 @@ func BuildCLI(mode string) error {
 func BuildCLIRelease() error { return BuildCLI("release") }
 func BuildCLIDebug() error   { return BuildCLI("debug") }
 
-// --- GUI build ---
-func BuildGUI(mode string) error {
-	if mode == "" {
-		mode = "release"
-	}
-
-	fmt.Printf("Building GUI (%s)...\n", mode)
-
-	root := projectRoot()
-	guiDir := filepath.Join(root, "gui", "csharp", "GEEC")
-	conf := "Release"
-	if strings.ToLower(mode) == "debug" {
-		conf = "Debug"
-	}
-
-	// OSに合わせてRIDと拡張子を決定
-	rid := "win-x64"
-	ext := ""
-	goos := os.Getenv("GOOS")
-	if goos == "" {
-		goos = runtime.GOOS
-	}
-
-	switch goos {
-	case "linux":
-		rid = "linux-x64"
-	case "darwin":
-		rid = "osx-arm64"
-	case "windows":
-		rid = "win-x64"
-		ext = ".exe"
-	}
-
-	outputDir := filepath.Join(root, "build", "gui")
-
-	args := []string{
-		"publish",
-		"-c", conf,
-		"-r", rid,
-		"--self-contained", "true",
-		"-o", outputDir,
-	}
-
-	// 1. ビルド実行
-	if err := run(guiDir, "dotnet", args...); err != nil {
-		return err
-	}
-
-	// 2. バイナリ名を GEEC -> geec に変更
-	// dotnet publish はデフォルトでプロジェクト名(GEEC)を出力するためリネームする
-	oldPath := filepath.Join(outputDir, "GEEC"+ext)
-	newPath := filepath.Join(outputDir, "geec"+ext)
-
-	// ファイルが存在する場合のみリネームを実行
-	if _, err := os.Stat(oldPath); err == nil {
-		fmt.Printf("Renaming binary: %s -> %s\n", oldPath, newPath)
-		if err := os.Rename(oldPath, newPath); err != nil {
-			return fmt.Errorf("failed to rename GUI binary: %w", err)
-		}
-	}
-
-	return BuildDeleter(mode)
-}
-
-func BuildGUIRelease() error { return BuildGUI("release") }
-func BuildGUIDebug() error   { return BuildGUI("debug") }
 
 // --- Shared library build ---
 func BuildLib(mode string) error {
@@ -177,7 +109,7 @@ func BuildLib(mode string) error {
 	fmt.Printf("Building shared lib (%s)...\n", mode)
 
 	root := projectRoot()
-	libDir := filepath.Join(root,"pkg/cexport")
+	libDir := filepath.Join(root, "pkg/cexport")
 	buildFile := filepath.Join(root, "build", "libcengine"+targetExt)
 
 	ldflags, gcflags := buildModeArg(mode, "github.com/m0090-dev/eec/pkg/cexport/")
