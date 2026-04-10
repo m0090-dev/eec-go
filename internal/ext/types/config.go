@@ -10,6 +10,7 @@ import (
 	"github.com/pelletier/go-toml/v2"
 	"gopkg.in/yaml.v3"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"runtime"
 	"strings"
@@ -431,7 +432,6 @@ func (c *Config) BuildEnvs(os OS, logger interfaces.Logger, baseEnv []string, se
 	}
 
 	envMap := make(map[string][]string)
-
 	// baseEnv (既存の環境変数) を map に変換
 	for _, e := range baseEnv {
 		if strings.HasPrefix(e, "=") {
@@ -457,56 +457,65 @@ func (c *Config) BuildEnvs(os OS, logger interfaces.Logger, baseEnv []string, se
 
 		// 1. まず「生の値 (raw)」をスライスとして取り出す
 		var rawStrings []string
-		switch val := env.Value.(type) {
-		case string:
-			rawStrings = []string{val}
-		case []interface{}:
-			for _, v := range val {
-				if s, ok := v.(string); ok {
-					rawStrings = append(rawStrings, s)
-				}
+		isListType := false
+		rv := reflect.ValueOf(env.Value)
+		if rv.Kind() == reflect.Slice || rv.Kind() == reflect.Array {
+			isListType = true
+			for i := 0; i < rv.Len(); i++ {
+				// 中身を文字列に変換して追加
+				rawStrings = append(rawStrings, fmt.Sprint(rv.Index(i).Interface()))
 			}
-		default:
-			logger.Warn().Interface("env", env).Msg("無効な値タイプ")
+		} else if s, ok := env.Value.(string); ok {
+			rawStrings = []string{s}
+			isListType = false
+		} else {
 			continue
 		}
-
+		logger.Debug().
+			Str("key", keyUpper).
+			Bool("isListType", isListType).
+			Interface("rawValues", rawStrings).
+			Msg("Processing environment variable")
 		// 2. 重要：ここまでの envMap（上の行の変数が反映済み）を使って展開する
 		var expandedValues []string
 		for _, raw := range rawStrings {
 			// この時点の envMap には直前のループの結果が入っている
-			expanded := general.ExpandEnvAndCommands(raw, envMap)
+			expanded := general.ExpandEnvAndCommands(os.Env, os.FS, os.Executor, os.Console, raw, envMap)
 			expandedValues = append(expandedValues, expanded)
 		}
 
 		// 3. 既存値と展開後の新規値をマージして重複排除
 		existing := make(map[string]struct{})
 		merged := []string{}
+		if isListType {
 
-		// a) 既存の値を登録
-		for _, v := range envMap[keyUpper] {
-			for _, part := range strings.Split(v, separator) {
-				part = strings.TrimSpace(part)
-				if part != "" {
-					if _, ok := existing[part]; !ok {
-						existing[part] = struct{}{}
-						merged = append(merged, part)
+			// a) 既存の値を登録
+			for _, v := range envMap[keyUpper] {
+				for _, part := range strings.Split(v, separator) {
+					part = strings.TrimSpace(part)
+					if part != "" {
+						if _, ok := existing[part]; !ok {
+							existing[part] = struct{}{}
+							merged = append(merged, part)
+						}
 					}
 				}
 			}
-		}
 
-		// b) 展開された新しい値を登録
-		for _, v := range expandedValues {
-			for _, part := range strings.Split(v, separator) {
-				part = strings.TrimSpace(part)
-				if part != "" {
-					if _, ok := existing[part]; !ok {
-						existing[part] = struct{}{}
-						merged = append(merged, part)
+			// b) 展開された新しい値を登録
+			for _, v := range expandedValues {
+				for _, part := range strings.Split(v, separator) {
+					part = strings.TrimSpace(part)
+					if part != "" {
+						if _, ok := existing[part]; !ok {
+							existing[part] = struct{}{}
+							merged = append(merged, part)
+						}
 					}
 				}
 			}
+		} else {
+			merged = expandedValues
 		}
 
 		// 4. 重要：envMap を即座に更新 (これで次のループの展開で参照可能になる)

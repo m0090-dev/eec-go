@@ -3,13 +3,11 @@ package types
 import (
 	"bytes"
 	"fmt"
-	"github.com/rs/zerolog/log"
-	//"os"
-	"path/filepath"
-	"strings"
-
 	"github.com/m0090-dev/eec/internal/ext/interfaces"
 	"github.com/m0090-dev/eec/internal/ext/utils/general"
+	"github.com/rs/zerolog/log"
+	"path/filepath"
+	"strings"
 )
 
 type TagData struct {

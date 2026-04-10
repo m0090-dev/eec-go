@@ -1,0 +1,4 @@
+[envs]
+# 適当な別の変数
+DUMMY = "hello"
+
