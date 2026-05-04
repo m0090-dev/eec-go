@@ -12,9 +12,9 @@ import (
 func genScript() {
 	//domain.GenUtilsScript()
 	//domain.GenWrapScript()
-	e := core.NewEngine(nil, nil)
+	e := core.NewEngine(nil)
 	if err := e.GenScript(); err != nil {
-		e.Logger.Fatal().Err(err).Msg("Failed to gen script")
+		e.Runtime.Logger().Fatal().Err(err).Msg("Failed to gen script")
 	}
 }
 

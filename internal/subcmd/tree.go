@@ -10,9 +10,9 @@ import (
 )
 
 func tree(args []string) {
-	e := core.NewEngine(nil, nil)
+	e := core.NewEngine(nil)
 	if err := e.Tree(args[0]); err != nil {
-		e.Logger.Fatal().Err(err).Msg("Failed to tree")
+		e.Runtime.Logger().Fatal().Err(err).Msg("Failed to tree")
 	}
 
 }

@@ -11,7 +11,7 @@ import (
 )
 
 func TestEngineRun(t *testing.T) {
-	os := types.OS{
+	os := interfaces.Runtime{
 		FS:          impl.OSFS{},
 		Executor:    impl.DefaultExecutor{},
 		Console:     impl.DefaultConsole{},
