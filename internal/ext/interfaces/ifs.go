@@ -16,4 +16,8 @@ type FS interface {
 	Open(name string) (*os.File, error)
 	Stat(name string) (os.FileInfo, error)
 	IsNotExist(err error) bool
+	OpenFile(name string, flag int, perm uint32) (*os.File, error)
+	O_APPEND() int
+	O_CREATE() int
+	O_WRONLY() int
 }

@@ -5,8 +5,8 @@ import (
 )
 
 func main() {
-	e := core_deleter.NewEngine(nil, nil)
+	e := core_deleter.NewEngine(nil)
 	if err := e.Run(); err != nil {
-		e.Logger.Fatal().Err(err).Msg("Failed to run")
+		e.Runtime.Logger().Fatal().Err(err).Msg("Failed to run")
 	}
 }

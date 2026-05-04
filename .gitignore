@@ -1,4 +1,5 @@
 build/*
+eec-scripts/*
 csharp/GEEC/bin/*
 csharp/GEEC/obj/*
 !build/.gitkeep

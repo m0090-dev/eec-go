@@ -7,8 +7,7 @@ import "path/filepath"
 func ResolveRunOptions(
 	opts types.RunOptions,
 	tagData types.TagData,
-	os types.OS,
-	logger interfaces.Logger,
+	rt interfaces.Runtime,
 ) (configFile string, program string, programArgs []string, finalEnv []string, err error) {
 	var config types.Config
 	allConfigs := []types.Config{}
@@ -28,7 +27,19 @@ func ResolveRunOptions(
 		if abs, err := filepath.Abs(configFile); err == nil {
 			configFile = abs
 		} else {
-			logger.Warn().Err(err).Msg("failed to resolve absolute path for configFile")
+			rt.Logger().Warn().Err(err).Msg("failed to resolve absolute path for configFile")
+		}
+	}
+
+	// ----------------------
+	// メイン configとインライン
+	// ----------------------
+	if configFile != "" && rt.FS().FileExists(configFile) {
+		config, err = types.ReadConfig(rt, configFile)
+		if err != nil {
+			rt.Logger().Error().Err(err).Str("configFile", configFile).Msg("failed to read config")
+		} else {
+			allConfigs = append(allConfigs, config)
 		}
 	}
 
@@ -38,7 +49,7 @@ func ResolveRunOptions(
 
 	// タグで指定された imports（最も低い）
 	for _, imp := range tagData.ImportConfigFiles {
-		cfg, err := ReadOrFallbackRecursive(opts, os, logger, imp)
+		cfg, err := ReadOrFallbackRecursive(opts, rt, imp)
 		if err != nil {
 			return "", "", nil, nil, err // ← continue ではなく return
 		}
@@ -47,27 +58,15 @@ func ResolveRunOptions(
 
 	// CLI で指定された imports（中間）
 	for _, imp := range opts.Imports {
-		cfg, err := ReadOrFallbackRecursive(opts, os, logger, imp)
+		cfg, err := ReadOrFallbackRecursive(opts, rt, imp)
 		if err != nil {
 			return "", "", nil, nil, err // ← continue ではなく return
 		}
 		allConfigs = append(allConfigs, cfg)
 	}
 
-	// ----------------------
-	// メイン configとインライン
-	// ----------------------
-	if configFile != "" && os.FS.FileExists(configFile) {
-		config, err = types.ReadConfig(os, logger, configFile)
-		if err != nil {
-			logger.Error().Err(err).Str("configFile", configFile).Msg("failed to read config")
-		} else {
-			allConfigs = append(allConfigs, config)
-		}
-	}
-
 	// 3. 【優先度：高】インライン設定を読み込む (ファイルの設定を上書きできるように最後に配置)
-	inlineCfg, err := resolveInlineFromOptions(opts, os, logger)
+	inlineCfg, err := resolveInlineFromOptions(opts, rt)
 	if err == nil && (inlineCfg.RawEnvs != nil || inlineCfg.Program.Path != "") {
 		allConfigs = append(allConfigs, inlineCfg)
 
@@ -107,28 +106,28 @@ func ResolveRunOptions(
 	// ------------------------
 	// 環境変数を構築
 	// ------------------------
-	finalEnv = os.Env.Environ()
+	finalEnv = rt.Env().Environ()
 
 	for _, cfg := range allConfigs {
-		finalEnv = cfg.BuildEnvs(os, logger, finalEnv, opts.Separator)
+		finalEnv = cfg.BuildEnvs(rt, finalEnv, opts.Separator)
 	}
 
 	return configFile, program, programArgs, finalEnv, nil
 }
 
 // ヘルパー: どのインラインフラグを使うか判定
-func resolveInlineFromOptions(opts types.RunOptions, os types.OS, logger interfaces.Logger) (types.Config, error) {
+func resolveInlineFromOptions(opts types.RunOptions, rt interfaces.Runtime) (types.Config, error) {
 	if opts.InlineConfigToml != "" {
-		return types.ReadInlineConfig(os, logger, opts.InlineConfigToml, "toml")
+		return types.ReadInlineConfig(rt, opts.InlineConfigToml, "toml")
 	}
 	if opts.InlineConfigYaml != "" {
-		return types.ReadInlineConfig(os, logger, opts.InlineConfigYaml, "yaml")
+		return types.ReadInlineConfig(rt, opts.InlineConfigYaml, "yaml")
 	}
 	if opts.InlineConfigJson != "" {
-		return types.ReadInlineConfig(os, logger, opts.InlineConfigJson, "json")
+		return types.ReadInlineConfig(rt, opts.InlineConfigJson, "json")
 	}
 	if opts.InlineConfig != "" {
-		return types.ReadInlineConfig(os, logger, opts.InlineConfig, "")
+		return types.ReadInlineConfig(rt, opts.InlineConfig, "")
 	}
 	return types.Config{}, nil
 }

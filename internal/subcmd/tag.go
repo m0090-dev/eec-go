@@ -22,7 +22,7 @@ var (
 )
 
 func add(name string) {
-	e := core.NewEngine(nil, nil)
+	e := core.NewEngine(nil)
 	data := types.TagData{
 		ConfigFile:        configFileTagFlag,
 		Program:           programTagFlag,
@@ -30,25 +30,25 @@ func add(name string) {
 		ImportConfigFiles: importConfigFilesTagFlag,
 	}
 	if err := e.TagAdd(name, data); err != nil {
-		e.Logger.Fatal().Err(err).Msg("Failed to tag add")
+		e.Runtime.Logger().Fatal().Err(err).Msg("Failed to tag add")
 	}
 }
 func read(name string) {
-	e := core.NewEngine(nil, nil)
+	e := core.NewEngine(nil)
 	if err := e.TagRead(name); err != nil {
-		e.Logger.Fatal().Err(err).Msg("Failed to tag read")
+		e.Runtime.Logger().Fatal().Err(err).Msg("Failed to tag read")
 	}
 }
 func list() {
-	e := core.NewEngine(nil, nil)
+	e := core.NewEngine(nil)
 	if err := e.TagList(); err != nil {
-		e.Logger.Fatal().Err(err).Msg("Failed to tag list")
+		e.Runtime.Logger().Fatal().Err(err).Msg("Failed to tag list")
 	}
 }
 func remove(name string) {
-	e := core.NewEngine(nil, nil)
+	e := core.NewEngine(nil)
 	if err := e.TagRemove(name); err != nil {
-		e.Logger.Fatal().Err(err).Msg("Failed tp tag remove")
+		e.Runtime.Logger().Fatal().Err(err).Msg("Failed tp tag remove")
 	}
 }
 

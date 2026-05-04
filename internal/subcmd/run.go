@@ -30,7 +30,7 @@ var DeleterHideWindowRunFlag bool
 var SeparatorRunFlag string
 
 func run() {
-	e := core.NewEngine(nil, nil)
+	e := core.NewEngine(nil)
 	opts := types.RunOptions{
 		ConfigFile:        configFileRunFlag,
 		InlineConfig:      inlineConfigRunFlag,
@@ -48,7 +48,7 @@ func run() {
 		Separator:         SeparatorRunFlag,
 	}
 	if err := e.Run(context.Background(), opts); err != nil {
-		e.Logger.Fatal().Err(err).Msg("Failed to run")
+		e.Runtime.Logger().Fatal().Err(err).Msg("Failed to run")
 	}
 }
 
