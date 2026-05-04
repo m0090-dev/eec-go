@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/m0090-dev/eec/internal/ext/interfaces"
 	"github.com/m0090-dev/eec/internal/ext/interfaces/impl"
-	"github.com/m0090-dev/eec/internal/ext/types"
+	//"github.com/m0090-dev/eec/internal/ext/types"
 	"github.com/rs/zerolog/log"
 	"path/filepath"
 	"strconv"
@@ -16,7 +16,7 @@ import (
 // ====================
 // プロセスが終了するのを待機する関数
 // ====================
-func waitForProcessTermination(os types.OS, pid int) error {
+func waitForProcessTermination(rt interfaces.Runtime, pid int) error {
 	for {
 		var (
 			name string
@@ -24,7 +24,7 @@ func waitForProcessTermination(os types.OS, pid int) error {
 		)
 
 		// 1. OSごとのコマンドラインを組み立て
-		switch os.Env.GOOS() {
+		switch rt.Env().GOOS() {
 		case "windows":
 			name = "tasklist"
 			args = []string{"/FI", fmt.Sprintf("PID eq %d", pid)}
@@ -35,13 +35,13 @@ func waitForProcessTermination(os types.OS, pid int) error {
 
 		// 2. 抽象化された Executor を使用
 		// stdout は Output() でキャプチャするため nil を渡す
-		cmd, err := os.Executor.Command(
+		cmd, err := rt.Executor().Command(
 			name,
 			args,
-			os.Env.Environ(),
-			os.Console.Stdin(),
+			rt.Env().Environ(),
+			rt.Console().Stdin(),
 			nil, // Output() を使うためのポイント
-			os.Console.Stderr(),
+			rt.Console().Stderr(),
 			true,
 		)
 		if err != nil {
@@ -67,27 +67,22 @@ func waitForProcessTermination(os types.OS, pid int) error {
 // Engine is the core library entrypoint. It contains pluggable implementations
 // for executing commands and file operations so CLI can inject mocks for tests.
 type Engine struct {
-	OS     types.OS
-	Logger interfaces.Logger
+	Runtime interfaces.Runtime
 }
 
-func (e *Engine) FS() interfaces.FS                   { return e.OS.FS }
-func (e *Engine) Env() interfaces.Env                 { return e.OS.Env }
-func (e *Engine) Executor() interfaces.Executor       { return e.OS.Executor }
-func (e *Engine) CommandLine() interfaces.CommandLine { return e.OS.CommandLine }
-func (e *Engine) Console() interfaces.Console         { return e.OS.Console }
+func (e *Engine) FS() interfaces.FS                   { return e.Runtime.FS() }
+func (e *Engine) Env() interfaces.Env                 { return e.Runtime.Env() }
+func (e *Engine) Executor() interfaces.Executor       { return e.Runtime.Executor() }
+func (e *Engine) CommandLine() interfaces.CommandLine { return e.Runtime.CommandLine() }
+func (e *Engine) Console() interfaces.Console         { return e.Runtime.Console() }
 
-func NewEngine(os *types.OS, logger interfaces.Logger) *Engine {
-	if os == nil {
-		temp := types.NewOS()
-		os = &temp
-	}
-	if logger == nil {
-		logger = impl.NewDefaultLogger()
+func NewEngine(rt interfaces.Runtime) *Engine {
+	if rt == nil {
+		temp := impl.DefaultRuntime{}
+		rt = &temp
 	}
 	return &Engine{
-		OS:     *os,
-		Logger: logger,
+		Runtime: rt,
 	}
 }
 
@@ -125,7 +120,7 @@ func (e *Engine) Run() error {
 
 			// PID が存在すれば待機
 			if pid > 0 {
-				if err := waitForProcessTermination(e.OS, pid); err != nil {
+				if err := waitForProcessTermination(e.Runtime, pid); err != nil {
 					log.Error().Err(err).Int("pid", pid).Msg("Failed waiting for process")
 				}
 			}

@@ -5,7 +5,6 @@ import (
 	"github.com/m0090-dev/eec/internal/ext/types"
 	"github.com/m0090-dev/eec/internal/ext/utils/general"
 	"path/filepath"
-	"runtime"
 	"strings"
 )
 
@@ -207,47 +206,47 @@ func GenUnixWrapScript() string {
 	return unixWrapEECScript
 }
 
-func GenWrapScript(os types.OS, logger interfaces.Logger) {
+func GenWrapScript(rt interfaces.Runtime) {
 	scriptDir := types.DEFAULT_SCRIPT_DIR
 	baseName := "eec"
 	guiBaseName := "geec"
 	// ディレクトリがなければ作成
-	if err := os.FS.MkdirAll(scriptDir, 0755); err != nil {
-		logger.Error().Err(err).Msg("Failed to create utils script directory")
+	if err := rt.FS().MkdirAll(scriptDir, 0755); err != nil {
+		rt.Logger().Error().Err(err).Msg("Failed to create utils script directory")
 		return
 	}
 
 	// --- Windows用スクリプト ---
 	windowsScriptContent := GenWindowsWrapScript()
-	windowsScriptFileName := general.AddExtension(baseName, ".bat")
+	windowsScriptFileName := general.AddExtension(baseName, ".cmd")
 	windowsScriptFile := filepath.Join(scriptDir, windowsScriptFileName)
 
 	func() {
-		file, err := os.FS.Create(windowsScriptFile)
+		file, err := rt.FS().Create(windowsScriptFile)
 		if err != nil {
-			logger.Error().Err(err).Str("file", windowsScriptFile).Msg("Failed to create Windows wrap script")
+			rt.Logger().Error().Err(err).Str("file", windowsScriptFile).Msg("Failed to create Windows wrap script")
 			return
 		}
 		defer file.Close()
 		if _, err := file.WriteString(windowsScriptContent); err != nil {
-			logger.Error().Err(err).Str("file", windowsScriptFile).Msg("Failed to write Windows wrap script")
+			rt.Logger().Error().Err(err).Str("file", windowsScriptFile).Msg("Failed to write Windows wrap script")
 		}
 	}()
 
 	// --- Windows用スクリプト ---
 	windowsGUIScriptContent := GenWindowsGUIWrapScript()
-	windowsGUIScriptFileName := general.AddExtension(guiBaseName, ".bat")
+	windowsGUIScriptFileName := general.AddExtension(guiBaseName, ".cmd")
 	windowsGUIScriptFile := filepath.Join(scriptDir, windowsGUIScriptFileName)
 
 	func() {
-		file, err := os.FS.Create(windowsGUIScriptFile)
+		file, err := rt.FS().Create(windowsGUIScriptFile)
 		if err != nil {
-			logger.Error().Err(err).Str("file", windowsGUIScriptFile).Msg("Failed to create Windows wrap script")
+			rt.Logger().Error().Err(err).Str("file", windowsGUIScriptFile).Msg("Failed to create Windows wrap script")
 			return
 		}
 		defer file.Close()
 		if _, err := file.WriteString(windowsGUIScriptContent); err != nil {
-			logger.Error().Err(err).Str("file", windowsGUIScriptFile).Msg("Failed to write Windows wrap script")
+			rt.Logger().Error().Err(err).Str("file", windowsGUIScriptFile).Msg("Failed to write Windows wrap script")
 		}
 	}()
 
@@ -257,53 +256,53 @@ func GenWrapScript(os types.OS, logger interfaces.Logger) {
 	unixScriptFile := filepath.Join(scriptDir, unixScriptFileName)
 
 	func() {
-		file, err := os.FS.Create(unixScriptFile)
+		file, err := rt.FS().Create(unixScriptFile)
 		if err != nil {
-			logger.Error().Err(err).Str("file", unixScriptFile).Msg("Failed to create Unix wrap script")
+			rt.Logger().Error().Err(err).Str("file", unixScriptFile).Msg("Failed to create Unix wrap script")
 			return
 		}
 		defer file.Close()
 		if _, err := file.WriteString(unixScriptContent); err != nil {
-			logger.Error().Err(err).Str("file", unixScriptFile).Msg("Failed to write Unix wrap script")
+			rt.Logger().Error().Err(err).Str("file", unixScriptFile).Msg("Failed to write Unix wrap script")
 		}
 	}()
 }
 
-func GenUtilsScript(os types.OS, logger interfaces.Logger) {
-	homeDir, _ := os.Env.UserHomeDir()
+func GenUtilsScript(rt interfaces.Runtime) {
+	homeDir, _ := rt.Env().UserHomeDir()
 	if homeDir == "" {
 		return
 	}
 	tagDir := filepath.Join(homeDir, types.DEFAULT_TAG_DIR)
 	tagFileLists, _ := general.GetFilesWithExtension(tagDir, ".tag")
 	tagNameLists := general.RemoveExtensions(general.BaseSlice(tagFileLists))
-	logger.Debug().
+	rt.Logger().Debug().
 		Str("tagNameLists", strings.Join(tagNameLists, ",")).Msg("")
 
 	for _, name := range tagNameLists {
 		baseName := "t" + name
-		logger.Debug().
+		rt.Logger().Debug().
 			Str("tagName", name).Msg("")
 
-		tagData, err := types.ReadTagData(os, logger, name)
+		tagData, err := types.ReadTagData(rt, name)
 		if err != nil {
-			logger.Error().Err(err).Str("tag", name).Msg("Failed to read tag data")
+			rt.Logger().Error().Err(err).Str("tag", name).Msg("Failed to read tag data")
 			continue
 		}
 
 		configFile := tagData.ConfigFile
 		var config types.Config
 		if configFile != "" && general.FileExists(configFile) {
-			config, err = types.ReadConfig(os, logger, configFile)
+			config, err = types.ReadConfig(rt, configFile)
 			if err != nil {
-				logger.Error().Err(err).Str("configFile", configFile).Msg("Failed to read config file")
+				rt.Logger().Error().Err(err).Str("configFile", configFile).Msg("Failed to read config file")
 			}
 		}
 
 		var tagUtilsScriptContent string
 		var tagUtilsScriptFileName string
 
-		if runtime.GOOS == "windows" {
+		if rt.Env().GOOS() == "windows" {
 			hasProgram := tagData.Program != "" || config.Program.Path != ""
 			hasProgramArgs := len(tagData.ProgramArgs) != 0 || len(config.Program.Args) != 0
 
@@ -325,32 +324,32 @@ func GenUtilsScript(os types.OS, logger interfaces.Logger) {
 				tagUtilsScriptContent = GenWindowsSimpleTagUtilsScript(name)
 			}
 
-			tagUtilsScriptFileName = general.AddExtension(baseName, ".bat")
+			tagUtilsScriptFileName = general.AddExtension(baseName, ".cmd")
 
 		} else {
 			tagUtilsScriptContent = GenUnixTagUtilsScript(name)
 			tagUtilsScriptFileName = general.AddExtension(baseName, ".sh")
 		}
 
-		logger.Debug().
+		rt.Logger().Debug().
 			Str("tagUtilsScriptContent", tagUtilsScriptContent).
 			Str("tagUtilsScriptFileName", tagUtilsScriptFileName).
 			Msg("")
 
 		scriptDir := filepath.Join(types.DEFAULT_SCRIPT_DIR, types.DEFAULT_UTILS_SCRIPT_DIR)
 		tagUtilsScriptFile := filepath.Join(scriptDir, tagUtilsScriptFileName)
-		logger.Debug().
+		rt.Logger().Debug().
 			Str("tagUtilsScriptFile", tagUtilsScriptFile).
 			Msg("")
 
-		if err := os.FS.MkdirAll(scriptDir, 0755); err != nil {
-			logger.Error().Err(err).Msg("Failed to create utils script directory")
+		if err := rt.FS().MkdirAll(scriptDir, 0755); err != nil {
+			rt.Logger().Error().Err(err).Msg("Failed to create utils script directory")
 			return
 		}
 
-		file, err := os.FS.Create(tagUtilsScriptFile)
+		file, err := rt.FS().Create(tagUtilsScriptFile)
 		if err != nil {
-			logger.Error().Err(err).Str("file", tagUtilsScriptFile).Msg("Failed to create file")
+			rt.Logger().Error().Err(err).Str("file", tagUtilsScriptFile).Msg("Failed to create file")
 			return
 		}
 
@@ -358,7 +357,7 @@ func GenUtilsScript(os types.OS, logger interfaces.Logger) {
 			defer file.Close()
 			_, err := file.WriteString(tagUtilsScriptContent)
 			if err != nil {
-				logger.Error().Err(err).Msg("Failed to write to file")
+				rt.Logger().Error().Err(err).Msg("Failed to write to file")
 			}
 		}()
 	}

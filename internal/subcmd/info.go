@@ -10,9 +10,9 @@ import (
 
 func info() {
 	//fmt.Printf("version: %s\n",ext.VERSION)
-	e := core.NewEngine(nil, nil)
+	e := core.NewEngine(nil)
 	if err := e.Info(); err != nil {
-		e.Logger.Fatal().Err(err).Msg("Failed to info")
+		e.Runtime.Logger().Fatal().Err(err).Msg("Failed to info")
 	}
 }
 

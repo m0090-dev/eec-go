@@ -2,7 +2,7 @@ package types
 
 import (
 	"fmt"
-	"os"
+	"github.com/m0090-dev/eec/internal/ext/interfaces"
 	"path/filepath"
 )
 
@@ -11,12 +11,12 @@ type Manifest struct {
 	EECPID       int
 }
 
-func (m *Manifest) WriteToManifest() (string, error) {
+func (m *Manifest) WriteToManifest(rt interfaces.Runtime) (string, error) {
 	manifestDir := filepath.Dir(m.TempFilePath)
 	manifestPath := filepath.Join(manifestDir, DEFAULT_MANIFEST_FILE_NAME+".txt")
 
 	// 追記モードで開く（存在しなければ作成）
-	file, err := os.OpenFile(manifestPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	file, err := rt.FS().OpenFile(manifestPath, rt.FS().O_APPEND()|rt.FS().O_CREATE()|rt.FS().O_WRONLY(), 0644)
 	if err != nil {
 		return "", err
 	}
