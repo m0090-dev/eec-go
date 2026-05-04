@@ -38,7 +38,7 @@ func getEngine(id uintptr) (*core.Engine, bool) {
 
 //export Engine_New
 func Engine_New() C.PEngine {
-	e := core.NewEngine(nil, nil)
+	e := core.NewEngine(nil)
 	engineMu.Lock()
 	id := nextID
 	nextID++
