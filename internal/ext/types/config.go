@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
-	"runtime"
 	"strings"
 )
 
@@ -109,7 +108,7 @@ func (c *Config) SortEnvsByDependency() error {
 	return nil
 }
 
-func (c *Config) NormalizeEnvs(logger interfaces.Logger) error {
+func (c *Config) NormalizeEnvs(rt interfaces.Runtime) error {
 	if c.RawEnvs == nil {
 		return nil
 	}
@@ -161,7 +160,7 @@ func (c *Config) NormalizeEnvs(logger interfaces.Logger) error {
 	}
 	return nil
 }
-func (c *Config) NormalizeConfigs(logger interfaces.Logger) error {
+func (c *Config) NormalizeConfigs(rt interfaces.Runtime) error {
 	if c.RawConfigs == nil {
 		return nil
 	}
@@ -204,21 +203,21 @@ func mapToMetaConfig(m map[string]interface{}) MetaConfig {
 	return mc
 }
 
-func ReadConfig(os OS, logger interfaces.Logger, fileName string) (Config, error) {
+func ReadConfig(rt interfaces.Runtime, fileName string) (Config, error) {
 	ext := general.FileExt(fileName)
 	if ext == ".toml" {
-		return ReadToml(os, logger, fileName)
+		return ReadToml(rt, fileName)
 	} else if ext == ".yaml" || ext == ".yml" {
-		return ReadYaml(os, logger, fileName)
+		return ReadYaml(rt, fileName)
 	} else if ext == ".json" {
-		return ReadJson(os, logger, fileName)
+		return ReadJson(rt, fileName)
 	} else if ext == ".env" {
-		return ReadEnv(os, logger, fileName)
+		return ReadEnv(rt, fileName)
 	}
 	return Config{}, nil
 }
 
-func ReadInlineConfig(os OS, logger interfaces.Logger, content string, format string) (Config, error) {
+func ReadInlineConfig(rt interfaces.Runtime, content string, format string) (Config, error) {
 	content = strings.TrimSpace(content)
 	if content == "" {
 		return Config{}, nil
@@ -273,10 +272,10 @@ PARSED:
 
 	// --- 2. 共通の正規化・依存関係ソート ---
 	// 先ほど修正した、errorを返すようになった NormalizeEnvs を使用
-	if err := cfg.NormalizeConfigs(logger); err != nil {
+	if err := cfg.NormalizeConfigs(rt); err != nil {
 		return Config{}, fmt.Errorf("normalize configs error: %w", err)
 	}
-	if err := cfg.NormalizeEnvs(logger); err != nil {
+	if err := cfg.NormalizeEnvs(rt); err != nil {
 		return Config{}, fmt.Errorf("normalize error: %w", err)
 	}
 
@@ -287,8 +286,8 @@ PARSED:
 	return cfg, nil
 }
 
-func ReadJson(os OS, logger interfaces.Logger, fileName string) (Config, error) {
-	data, err := os.FS.ReadFile(fileName)
+func ReadJson(rt interfaces.Runtime, fileName string) (Config, error) {
+	data, err := rt.FS().ReadFile(fileName)
 	if err != nil {
 		return Config{}, err
 	}
@@ -296,15 +295,15 @@ func ReadJson(os OS, logger interfaces.Logger, fileName string) (Config, error) 
 	var config Config
 	err = json.Unmarshal(data, &config)
 	if err == nil {
-		config.NormalizeConfigs(logger)
-		config.NormalizeEnvs(logger)
+		config.NormalizeConfigs(rt)
+		config.NormalizeEnvs(rt)
 		config.SortEnvsByDependency()
 	}
 	return config, err
 
 }
-func ReadYaml(os OS, logger interfaces.Logger, fileName string) (Config, error) {
-	data, err := os.FS.ReadFile(fileName)
+func ReadYaml(rt interfaces.Runtime, fileName string) (Config, error) {
+	data, err := rt.FS().ReadFile(fileName)
 	if err != nil {
 		return Config{}, err
 	}
@@ -312,37 +311,38 @@ func ReadYaml(os OS, logger interfaces.Logger, fileName string) (Config, error) 
 	var config Config
 	err = yaml.Unmarshal(data, &config)
 	if err == nil {
-		config.NormalizeConfigs(logger)
-		config.NormalizeEnvs(logger)
+		config.NormalizeConfigs(rt)
+		config.NormalizeEnvs(rt)
 		config.SortEnvsByDependency()
 	}
 	return config, err
 
 }
 
-func ReadToml(os OS, logger interfaces.Logger, fileName string) (Config, error) {
-	data, err := os.FS.ReadFile(fileName)
+func ReadToml(rt interfaces.Runtime, fileName string) (Config, error) {
+	data, err := rt.FS().ReadFile(fileName)
 	if err != nil {
 		return Config{}, err
 	}
 
 	var config Config
 	err = toml.Unmarshal(data, &config)
+
 	if err == nil {
-		config.NormalizeConfigs(logger)
-		config.NormalizeEnvs(logger)
+		config.NormalizeConfigs(rt)
+		config.NormalizeEnvs(rt)
 		config.SortEnvsByDependency()
 	}
 	return config, err
 }
 
-func ReadEnv(os OS, logger interfaces.Logger, fileName string) (Config, error) {
+func ReadEnv(rt interfaces.Runtime, fileName string) (Config, error) {
 	var config Config
 	var envMap map[string]string
 	var err error
 	envMap, err = godotenv.Read(fileName)
 	if err != nil {
-		logger.Fatal().Err(err).Msg("Error reading .env file")
+		rt.Logger().Fatal().Err(err).Msg("Error reading .env file")
 	}
 
 	config.Envs = make([]Environ, 0, len(envMap))
@@ -356,63 +356,63 @@ func ReadEnv(os OS, logger interfaces.Logger, fileName string) (Config, error) {
 	return config, nil
 }
 
-func ReadInlineToml(os OS, logger interfaces.Logger, tomlData string) (Config, error) {
+func ReadInlineToml(rt interfaces.Runtime, logger interfaces.Logger, tomlData string) (Config, error) {
 	// UUID を使って一時ファイル名を生成
-	tmpFileName := filepath.Join(os.FS.TempDir(), "inline-"+uuid.NewString()+".toml")
+	tmpFileName := filepath.Join(rt.FS().TempDir(), "inline-"+uuid.NewString()+".toml")
 
 	// 一時ファイルに書き込み
-	err := os.FS.WriteFile(tmpFileName, []byte(tomlData), 0600)
+	err := rt.FS().WriteFile(tmpFileName, []byte(tomlData), 0600)
 	if err != nil {
 		return Config{}, err
 	}
 
 	// defer で削除を確実に実行
-	defer os.FS.Remove(tmpFileName)
+	defer rt.FS().Remove(tmpFileName)
 
 	// 通常の読み込み処理を使う
-	return ReadToml(os, logger, tmpFileName)
+	return ReadToml(rt, tmpFileName)
 }
-func ReadInlineJson(os OS, logger interfaces.Logger, jsonData string) (Config, error) {
+func ReadInlineJson(rt interfaces.Runtime, jsonData string) (Config, error) {
 	// UUID を使って一時ファイル名を生成
-	tmpFileName := filepath.Join(os.FS.TempDir(), "inline-"+uuid.NewString()+".json")
+	tmpFileName := filepath.Join(rt.FS().TempDir(), "inline-"+uuid.NewString()+".json")
 
 	// 一時ファイルに書き込み
-	err := os.FS.WriteFile(tmpFileName, []byte(jsonData), 0600)
+	err := rt.FS().WriteFile(tmpFileName, []byte(jsonData), 0600)
 	if err != nil {
 		return Config{}, err
 	}
 
 	// defer で削除を確実に実行
-	defer os.FS.Remove(tmpFileName)
+	defer rt.FS().Remove(tmpFileName)
 
 	// 通常の読み込み処理を使う
-	return ReadJson(os, logger, tmpFileName)
+	return ReadJson(rt, tmpFileName)
 
 }
-func ReadInlineYaml(os OS, logger interfaces.Logger, yamlData string) (Config, error) {
+func ReadInlineYaml(rt interfaces.Runtime, yamlData string) (Config, error) {
 	// UUID を使って一時ファイル名を生成
-	tmpFileName := filepath.Join(os.FS.TempDir(), "inline-"+uuid.NewString()+".yaml")
+	tmpFileName := filepath.Join(rt.FS().TempDir(), "inline-"+uuid.NewString()+".yaml")
 
 	// 一時ファイルに書き込み
-	err := os.FS.WriteFile(tmpFileName, []byte(yamlData), 0600)
+	err := rt.FS().WriteFile(tmpFileName, []byte(yamlData), 0600)
 	if err != nil {
 		return Config{}, err
 	}
 
 	// defer で削除を確実に実行
-	defer os.FS.Remove(tmpFileName)
+	defer rt.FS().Remove(tmpFileName)
 
 	// 通常の読み込み処理を使う
-	return ReadYaml(os, logger, tmpFileName)
+	return ReadYaml(rt, tmpFileName)
 
 }
 
-func (c *Config) BuildEnvs(os OS, logger interfaces.Logger, baseEnv []string, separator string) []string {
+func (c *Config) BuildEnvs(rt interfaces.Runtime, baseEnv []string, separator string) []string {
 
 	// Description 出力とセパレータ決定ロジック（中略）
 	for _, cfgs := range c.Configs {
 		if cfgs.Description != "" {
-			logger.Debug().Str("Config Description", cfgs.Description).Msg("")
+			rt.Logger().Debug().Str("Config Description", cfgs.Description).Msg("")
 		}
 	}
 	if separator == "" {
@@ -424,7 +424,7 @@ func (c *Config) BuildEnvs(os OS, logger interfaces.Logger, baseEnv []string, se
 		}
 	}
 	if separator == "" {
-		if runtime.GOOS == "windows" {
+		if rt.Env().GOOS() == "windows" {
 			separator = ";"
 		} else {
 			separator = ":"
@@ -450,7 +450,7 @@ func (c *Config) BuildEnvs(os OS, logger interfaces.Logger, baseEnv []string, se
 	// c.Envs (設定ファイルの envs) を処理
 	for _, env := range c.Envs {
 		if env.Key == "" {
-			logger.Warn().Interface("env", env).Msg("envのキーが空です")
+			rt.Logger().Warn().Interface("env", env).Msg("envのキーが空です")
 			continue
 		}
 		keyUpper := strings.ToUpper(env.Key)
@@ -471,7 +471,7 @@ func (c *Config) BuildEnvs(os OS, logger interfaces.Logger, baseEnv []string, se
 		} else {
 			continue
 		}
-		logger.Debug().
+		rt.Logger().Debug().
 			Str("key", keyUpper).
 			Bool("isListType", isListType).
 			Interface("rawValues", rawStrings).
@@ -480,7 +480,7 @@ func (c *Config) BuildEnvs(os OS, logger interfaces.Logger, baseEnv []string, se
 		var expandedValues []string
 		for _, raw := range rawStrings {
 			// この時点の envMap には直前のループの結果が入っている
-			expanded := general.ExpandEnvAndCommands(os.Env, os.FS, os.Executor, os.Console, raw, envMap)
+			expanded := general.ExpandEnvAndCommands(rt, raw, envMap)
 			expandedValues = append(expandedValues, expanded)
 		}
 

@@ -42,8 +42,8 @@ func getValuesFromAny(envMap any, key string) []string {
 }
 
 // すべての envMap を OS の環境変数形式 (KEY=VALUE) に変換するヘルパー
-func getAllEnvsFromAny(env interfaces.Env, fs interfaces.FS, envMap any) []string {
-	sep := string(env.PathListSeparator())
+func getAllEnvsFromAny(rt interfaces.Runtime, envMap any) []string {
+	sep := string(rt.Env().PathListSeparator())
 	var result []string
 	switch m := envMap.(type) {
 	case map[string]map[string]struct{}:
@@ -68,8 +68,8 @@ func getAllEnvsFromAny(env interfaces.Env, fs interfaces.FS, envMap any) []strin
 	return result
 }
 
-func replaceVariables(env interfaces.Env, fs interfaces.FS, input string, envMap any) string {
-	sep := env.PathListSeparator()
+func replaceVariables(rt interfaces.Runtime, input string, envMap any) string {
+	sep := rt.Env().PathListSeparator()
 	reVar := regexp.MustCompile(`\$\{([^}]+)\}`)
 
 	return reVar.ReplaceAllStringFunc(input, func(match string) string {
@@ -82,15 +82,15 @@ func replaceVariables(env interfaces.Env, fs interfaces.FS, input string, envMap
 				return strings.Join(vals, sep)
 			}
 			// 2. なければ OS 環境変数から探す
-			if val, ok := env.LookupEnv(key); ok {
+			if val, ok := rt.Env().LookupEnv(key); ok {
 				return val
 			}
 		}
 		return match
 	})
 }
-func ExpandEnvAndCommands(env interfaces.Env, fs interfaces.FS, exec interfaces.Executor, console interfaces.Console, input string, envMap any) string {
-	result := replaceVariables(env, fs, input, envMap)
+func ExpandEnvAndCommands(rt interfaces.Runtime, input string, envMap any) string {
+	result := replaceVariables(rt, input, envMap)
 	// --------------------------------------------------
 	// 1. 環境変数の展開: ${VAR} (Regex で OK)
 	// --------------------------------------------------
@@ -112,9 +112,9 @@ func ExpandEnvAndCommands(env interfaces.Env, fs interfaces.FS, exec interfaces.
 				cmdLine := strings.TrimSpace(content)
 				// 再帰的に中身を展開 (例: $(echo $(date)) の内側を先に解決)
 				//expandedCmdLine := ExpandEnvAndCommands(env, fs, exec, console, cmdLine, envMap)
-				expandedCmdLine := replaceVariables(env, fs, cmdLine, envMap)
+				expandedCmdLine := replaceVariables(rt, cmdLine, envMap)
 				// 実行
-				out := executeCommand(env, fs, exec, console, expandedCmdLine, envMap)
+				out := executeCommand(rt, expandedCmdLine, envMap)
 				sb.WriteString(out)
 
 				i = nextIdx // 閉じ括弧までスキップ
@@ -128,12 +128,12 @@ func ExpandEnvAndCommands(env interfaces.Env, fs interfaces.FS, exec interfaces.
 }
 
 // 内部用：Executor を使ってコマンドを実行するヘルパー
-func executeCommand(env interfaces.Env, fs interfaces.FS, executor interfaces.Executor, console interfaces.Console, cmdLine string, envMap any) string {
+func executeCommand(rt interfaces.Runtime, cmdLine string, envMap any) string {
 	var name string
 	var args []string
 
 	// OSごとのシェル呼び出しを定義
-	if env.GOOS() == "windows" {
+	if rt.Env().GOOS() == "windows" {
 		name = "cmd"
 		args = []string{"/c", cmdLine}
 	} else {
@@ -142,18 +142,18 @@ func executeCommand(env interfaces.Env, fs interfaces.FS, executor interfaces.Ex
 	}
 
 	// 環境変数の組み立て
-	currentEnv := env.Environ()
-	currentEnv = append(currentEnv, getAllEnvsFromAny(env, fs, envMap)...)
+	currentEnv := rt.Env().Environ()
+	currentEnv = append(currentEnv, getAllEnvsFromAny(rt, envMap)...)
 
 	// Executor.Command を呼び出す (exec.Cmd 型を直接宣言せずに実行)
 	// stdout を nil にすることで Output() 相当のキャプチャを可能にする設計を想定
-	cmd, err := executor.Command(
+	cmd, err := rt.Executor().Command(
 		name,
 		args,
 		currentEnv,
-		console.Stdin(),
+		rt.Console().Stdin(),
 		nil, // stdout: nil を渡して Output() で取得
-		console.Stderr(),
+		rt.Console().Stderr(),
 		true, // suppress window (Windows)
 	)
 	if err != nil {
@@ -165,16 +165,16 @@ func executeCommand(env interfaces.Env, fs interfaces.FS, executor interfaces.Ex
 		return ""
 	}
 	res := strings.TrimSpace(string(out))
-	if env.GOOS() == "windows" {
+	if rt.Env().GOOS() == "windows" {
 		res = strings.Trim(res, "\"")
 	}
 	return res
 }
 
-func ExpandEnvAndCommandsSlice(env interfaces.Env, fs interfaces.FS, exec interfaces.Executor, console interfaces.Console, inputs []string, envMap any) []string {
+func ExpandEnvAndCommandsSlice(rt interfaces.Runtime, inputs []string, envMap any) []string {
 	result := make([]string, len(inputs))
 	for i, s := range inputs {
-		result[i] = ExpandEnvAndCommands(env, fs, exec, console, s, envMap)
+		result[i] = ExpandEnvAndCommands(rt, s, envMap)
 	}
 	return result
 }

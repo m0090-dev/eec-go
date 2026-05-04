@@ -21,13 +21,13 @@ type TagData struct {
 // ---------------------------
 // TagData バイナリ保存処理
 // ---------------------------
-func (t *TagData) Write(os OS, logger interfaces.Logger, tagName string) error {
-	homeDir, err := os.Env.UserHomeDir()
+func (t *TagData) Write(rt interfaces.Runtime, tagName string) error {
+	homeDir, err := rt.Env().UserHomeDir()
 	if homeDir == "" {
 		return err
 	}
 	dir := filepath.Join(homeDir, DEFAULT_TAG_DIR)
-	if err := os.FS.MkdirAll(dir, 0755); err != nil {
+	if err := rt.FS().MkdirAll(dir, 0755); err != nil {
 		return err
 	}
 	tagPath := filepath.Join(dir, fmt.Sprintf("%s.tag", tagName))
@@ -48,7 +48,7 @@ func (t *TagData) Write(os OS, logger interfaces.Logger, tagName string) error {
 		return err
 	}
 
-	if err := os.FS.WriteFile(tagPath, buf.Bytes(), 0644); err != nil {
+	if err := rt.FS().WriteFile(tagPath, buf.Bytes(), 0644); err != nil {
 		return err
 	}
 
@@ -66,14 +66,14 @@ func (t *TagData) Write(os OS, logger interfaces.Logger, tagName string) error {
 // --------------------------
 // 読み取り処理
 // --------------------------
-func ReadTagData(os OS, logger interfaces.Logger, tagName string) (TagData, error) {
-	homeDir, _ := os.Env.UserHomeDir()
+func ReadTagData(rt interfaces.Runtime, tagName string) (TagData, error) {
+	homeDir, _ := rt.Env().UserHomeDir()
 	if homeDir == "" {
 		return TagData{}, fmt.Errorf(fmt.Sprintf("%s not set", homeDir))
 	}
 	tagPath := filepath.Join(homeDir, ".eec", fmt.Sprintf("%s.tag", tagName))
 
-	content, err := os.FS.ReadFile(tagPath)
+	content, err := rt.FS().ReadFile(tagPath)
 	if err != nil {
 		return TagData{}, err
 	}
