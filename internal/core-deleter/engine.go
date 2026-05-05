@@ -2,10 +2,11 @@ package core_deleter
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"github.com/m0090-dev/eec/internal/ext/interfaces"
 	"github.com/m0090-dev/eec/internal/ext/interfaces/impl"
-	//"github.com/m0090-dev/eec/internal/ext/types"
+	"github.com/m0090-dev/eec/internal/ext/types"
 	"github.com/rs/zerolog/log"
 	"path/filepath"
 	"strconv"
@@ -23,7 +24,6 @@ func waitForProcessTermination(rt interfaces.Runtime, pid int) error {
 			args []string
 		)
 
-		// 1. OSごとのコマンドラインを組み立て
 		switch rt.Env().GOOS() {
 		case "windows":
 			name = "tasklist"
@@ -33,14 +33,12 @@ func waitForProcessTermination(rt interfaces.Runtime, pid int) error {
 			args = []string{"-p", strconv.Itoa(pid)}
 		}
 
-		// 2. 抽象化された Executor を使用
-		// stdout は Output() でキャプチャするため nil を渡す
 		cmd, err := rt.Executor().Command(
 			name,
 			args,
 			rt.Env().Environ(),
 			rt.Console().Stdin(),
-			nil, // Output() を使うためのポイント
+			nil,
 			rt.Console().Stderr(),
 			true,
 		)
@@ -48,13 +46,11 @@ func waitForProcessTermination(rt interfaces.Runtime, pid int) error {
 			return fmt.Errorf("failed to create check command: %w", err)
 		}
 
-		// 3. Output() を実行（内部で Start -> Wait が行われる）
 		output, err := cmd.Output()
 		if err != nil {
 			return fmt.Errorf("failed to check process: %w", err)
 		}
 
-		// 判定ロジック
 		if strings.Contains(string(output), strconv.Itoa(pid)) {
 			time.Sleep(3 * time.Second)
 		} else {
@@ -64,8 +60,6 @@ func waitForProcessTermination(rt interfaces.Runtime, pid int) error {
 	return nil
 }
 
-// Engine is the core library entrypoint. It contains pluggable implementations
-// for executing commands and file operations so CLI can inject mocks for tests.
 type Engine struct {
 	Runtime interfaces.Runtime
 }
@@ -88,7 +82,7 @@ func NewEngine(rt interfaces.Runtime) *Engine {
 
 func (e *Engine) Run() error {
 	tempDir := e.FS().TempDir()
-	manifestPath := filepath.Join(tempDir, "eec_manifest.txt")
+	manifestPath := filepath.Join(tempDir, types.DEFAULT_MANIFEST_FILE_NAME+".jsonl")
 
 	for {
 		if _, err := e.FS().Stat(manifestPath); e.FS().IsNotExist(err) {
@@ -105,64 +99,70 @@ func (e *Engine) Run() error {
 		}
 
 		scanner := bufio.NewScanner(file)
-		var newLines []string
+		var remaining []types.ManifestEntry
 
 		for scanner.Scan() {
-			line := scanner.Text()
-			parts := strings.Fields(line)
-			if len(parts) != 2 {
-				log.Error().Str("line", line).Msg("Invalid line in manifest")
+			line := scanner.Bytes()
+			if len(strings.TrimSpace(string(line))) == 0 {
 				continue
 			}
 
-			tempFilePath := parts[0]
-			pid, _ := strconv.Atoi(parts[1])
+			// JSON Lines 形式でパース、失敗時は旧テキスト形式にフォールバック
+			var entry types.ManifestEntry
+			if err := json.Unmarshal(line, &entry); err != nil {
+				// 旧形式: "<path> <pid>"
+				parts := strings.Fields(string(line))
+				if len(parts) != 2 {
+					log.Error().Str("line", string(line)).Msg("Invalid line in manifest")
+					continue
+				}
+				entry.TempFilePath = parts[0]
+				entry.EECPID, _ = strconv.Atoi(parts[1])
+			}
 
-			// PID が存在すれば待機
-			if pid > 0 {
-				if err := waitForProcessTermination(e.Runtime, pid); err != nil {
-					log.Error().Err(err).Int("pid", pid).Msg("Failed waiting for process")
+			if entry.EECPID > 0 {
+				if err := waitForProcessTermination(e.Runtime, entry.EECPID); err != nil {
+					log.Error().Err(err).Int("pid", entry.EECPID).Msg("Failed waiting for process")
 				}
 			}
 
-			// 一時ファイルが残っていれば削除
-			if _, err := e.FS().Stat(tempFilePath); err == nil {
-				if err := e.FS().Remove(tempFilePath); err != nil {
-					log.Error().Err(err).Str("tempFilePath", tempFilePath).Msg("Failed to delete temp file")
-					// 削除失敗した行は manifest に残す
-					newLines = append(newLines, line)
+			if _, err := e.FS().Stat(entry.TempFilePath); err == nil {
+				if err := e.FS().Remove(entry.TempFilePath); err != nil {
+					log.Error().Err(err).Str("tempFilePath", entry.TempFilePath).Msg("Failed to delete temp file")
+					remaining = append(remaining, entry)
 				} else {
-					log.Info().Str("tempFilePath", tempFilePath).Msg("Deleted temp file")
+					log.Info().Str("tempFilePath", entry.TempFilePath).Msg("Deleted temp file")
 				}
 			} else {
-				// ファイルが無い場合は行を manifest から削除（もう不要）
-				log.Info().Str("tempFilePath", tempFilePath).Msg("Temp file already removed")
+				log.Info().Str("tempFilePath", entry.TempFilePath).Msg("Temp file already removed")
 			}
 		}
 
 		file.Close()
 
-		// manifest の更新
-		if len(newLines) == 0 {
+		if len(remaining) == 0 {
 			if err := e.FS().Remove(manifestPath); err != nil {
 				log.Error().Err(err).Msg("Failed to delete manifest file")
 			} else {
 				log.Info().Msg("Deleted manifest file")
 			}
-			break // 全て処理済みならループ終了
-		} else {
-			// 新しい内容で manifest を上書き
-			e.FS().WriteFile(manifestPath, []byte(strings.Join(newLines, "\n")), 0644)
-			log.Info().Msg("Updated manifest with remaining entries")
+			break
 		}
+
+		// 残エントリを JSON Lines で書き直す
+		var sb strings.Builder
+		for _, entry := range remaining {
+			b, _ := json.Marshal(entry)
+			sb.Write(b)
+			sb.WriteByte('\n')
+		}
+		e.FS().WriteFile(manifestPath, []byte(sb.String()), 0644)
+		log.Info().Msg("Updated manifest with remaining entries")
 
 		time.Sleep(5 * time.Second)
 	}
-	appID := "eec-deleter"
-	title := "完了メッセージ"
-	message := "一時ファイル等の削除が完了しました"
 
-	if err := SendNotification(appID, title, message); err != nil {
+	if err := SendNotification("eec-deleter", "完了メッセージ", "一時ファイル等の削除が完了しました"); err != nil {
 		return err
 	}
 	return nil
