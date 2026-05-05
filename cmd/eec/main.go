@@ -20,7 +20,7 @@ func init() {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 		// release
 	} else {
-		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+		zerolog.SetGlobalLevel(zerolog.WarnLevel)
 		subcmd.HideWindowRunFlag = true
 		subcmd.DeleterHideWindowRunFlag = true
 	}

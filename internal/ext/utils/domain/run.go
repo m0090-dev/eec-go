@@ -36,8 +36,6 @@ func readOrFallbackInternal(opts types.RunOptions, rt interfaces.Runtime, name s
 	if err != nil {
 		return cfg, err
 	}
-
-	env := rt.Env().Environ()
 	for _, f := range tagData.ImportConfigFiles {
 		// ★ここが重要：同じ visited map を渡して再帰する
 		fcfg, err := readOrFallbackInternal(opts, rt, f, visited)
@@ -45,35 +43,10 @@ func readOrFallbackInternal(opts types.RunOptions, rt interfaces.Runtime, name s
 			// 循環参照エラーなら即座に復帰（logger.Warnで流さず、上位にエラーを伝播させる）
 			return cfg, err
 		}
-		env = fcfg.BuildEnvs(rt, env, opts.Separator)
+		// env = fcfg.BuildEnvs(rt, env, opts.Separator)
+		cfg.Envs = append(cfg.Envs, fcfg.Envs...)
 	}
-
-	// env → cfg.Envs に変換 (以下、既存ロジック)
-
-	cfg.Envs = nil
-	for _, e := range env {
-		parts := strings.SplitN(e, "=", 2)
-		if len(parts) == 2 {
-			key, val := parts[0], parts[1]
-
-			// 1. セパレータを確定させる
-			sep := opts.Separator
-			if sep == "" {
-				sep = string(rt.Env().PathListSeparator()) // Windowsなら ";"
-			}
-
-			// 2. 確定したセパレータで判定・分割
-			if strings.Contains(val, sep) {
-				cfg.Envs = append(cfg.Envs, types.Environ{
-					Key:   key,
-					Value: strings.Split(val, sep),
-				})
-			} else {
-				cfg.Envs = append(cfg.Envs, types.Environ{Key: key, Value: val})
-			}
-		}
-	}
-
+	cfg.SourcePath = name
 	return cfg, nil
 }
 

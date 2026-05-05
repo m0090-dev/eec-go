@@ -62,6 +62,11 @@ func (e *Engine) Run(ctx context.Context, opts types.RunOptions) error {
 		Bool("Deleter hide window", opts.DeleterHideWindow).
 		Msg("Run called")
 
+	if opts.Verbose {
+		e.Runtime.SetLogger(
+			e.Runtime.Logger().EnableDebug(),
+		)
+	}
 	// -----------------------*/
 	// deleter起動
 	// -----------------------*/
@@ -83,12 +88,18 @@ func (e *Engine) Run(ctx context.Context, opts types.RunOptions) error {
 	// ----------------------*/
 	// ResolveRunOptions 呼び出し
 	// -----------------------*/
-	configFile, program, pArgs, finalEnv, err := domain.ResolveRunOptions(opts, tagData, e.Runtime)
+	configFile, program, pArgs, finalEnv, allConfigs, err := domain.ResolveRunOptions(opts, tagData, e.Runtime)
 	if err != nil {
 		return err // 循環参照などのエラーがあれば、ここで即座に終了
 	}
 	if program == "" {
 		return errors.New("no program specified")
+	}
+
+	// #20: 環境変数の上書き追跡・表示
+	tracker := types.TrackEnvOverrides(allConfigs)
+	if err := tracker.PrintOverrides(e.Runtime.Logger(), opts.DuplicateStrict, opts.DuplicateNoWarn); err != nil {
+		return err
 	}
 
 	// ----------------------*/
@@ -231,22 +242,13 @@ func (e *Engine) TagAdd(name string, tag types.TagData) error {
 		}
 	}
 
-	// -- デバッグ用ログ --
-	e.Runtime.Logger().Debug().
-		Str("tagName", tagName).
-		Msg("")
-	e.Runtime.Logger().Debug().
-		Str("configFileFlag", tag.ConfigFile).
-		Msg("")
-	e.Runtime.Logger().Debug().
-		Str("programFlag", tag.Program).
-		Msg("")
-	e.Runtime.Logger().Debug().
-		Str("programArgsFlag", strings.Join(tag.ProgramArgs, ", ")).
-		Msg("")
-	e.Runtime.Logger().Debug().
-		Str("Import config files", strings.Join(tag.ImportConfigFiles, ", ")).
-		Msg("")
+	general.PrintBlock("Tag Add Debug", map[string]interface{}{
+		"tagName":             tagName,
+		"configFileFlag":      tag.ConfigFile,
+		"programFlag":         tag.Program,
+		"programArgsFlag":     strings.Join(tag.ProgramArgs, ", "),
+		"Import config files": strings.Join(tag.ImportConfigFiles, ", "),
+	})
 
 	// タグファイル書き込み
 	if err := tag.Write(e.Runtime, tagName); err != nil {
@@ -264,14 +266,13 @@ func (e *Engine) TagRead(tagName string) error {
 		e.Runtime.Logger().Error().Err(err).Msg("タグファイルの読み込みに失敗しました")
 		return fmt.Errorf("Failed to tag read")
 	}
-
-	e.Runtime.Logger().Info().
-		Str("Tag", tagName).
-		Str("Config", data.ConfigFile).
-		Str("Program", data.Program).
-		Strs("Args", data.ProgramArgs).
-		Strs("Import config files", data.ImportConfigFiles).
-		Msg("Tag information")
+	general.PrintBlock("Tag information", map[string]interface{}{
+		"Tag":                 tagName,
+		"Config":              data.ConfigFile,
+		"Program":             data.Program,
+		"Args":                strings.Join(data.ProgramArgs, ", "),
+		"Import config files": strings.Join(data.ImportConfigFiles, ", "),
+	})
 	return nil
 }
 func (e *Engine) TagList() error {
@@ -286,51 +287,10 @@ func (e *Engine) TagList() error {
 		e.Runtime.Logger().Error().Err(err).Msg("タグファイルが見つかりませんでした")
 		return fmt.Errorf("Failed to tag list")
 	}
-	e.Runtime.Logger().Info().Str("message", "-- current tag lists --").Msg("Tag List Header")
-	for _, f := range fileLists {
-		fmt.Printf("%2s\n", f)
-	}
+	general.PrintBlock("Current Tag Lists", map[string]interface{}{
+		"Tags": strings.Join(fileLists, "\n"),
+	})
 	return nil
-}
-
-func (e *Engine) loadTempData() (types.TempData, string, error) {
-	var td types.TempData
-
-	// 1. OS の Temp にある manifest ファイルパスを取得
-	tmpDir := e.FS().TempDir()
-	manifestPath := filepath.Join(tmpDir, "eec_manifest.txt")
-
-	// 2. manifest ファイルを読み込む
-	content, err := e.FS().ReadFile(manifestPath)
-	if err != nil {
-		e.Runtime.Logger().Error().Err(err).Str("manifestPath", manifestPath).Msg("failed to read manifest")
-		return td, "", fmt.Errorf("failed to read manifest: %w", err)
-	}
-
-	// 3. 先頭のファイルパスだけを取り出す
-	tmpFilePath := strings.TrimSpace(string(content))
-	if idx := strings.Index(tmpFilePath, " "); idx != -1 {
-		tmpFilePath = tmpFilePath[:idx]
-	}
-	if tmpFilePath == "" {
-		e.Runtime.Logger().Error().Str("manifestPath", manifestPath).Msg("manifest file is empty")
-		return td, "", fmt.Errorf("manifest file is empty")
-	}
-
-	// 4. tempFile を開いて TempData をデコード
-	f, err := e.FS().Open(tmpFilePath)
-	if err != nil {
-		e.Runtime.Logger().Debug().Err(err).Str("tempFile", tmpFilePath).Msg("cannot open temp file")
-		return td, tmpFilePath, fmt.Errorf("no temp file found for current ChildPID")
-	}
-	defer f.Close()
-
-	if err := gob.NewDecoder(f).Decode(&td); err != nil {
-		e.Runtime.Logger().Error().Err(err).Str("tempFile", tmpFilePath).Msg("failed to decode temp data")
-		return td, tmpFilePath, fmt.Errorf("failed to decode temp data: %w", err)
-	}
-
-	return td, tmpFilePath, nil
 }
 
 func (e *Engine) TagRemove(name string) error {
@@ -350,7 +310,6 @@ func (e *Engine) TagRemove(name string) error {
 			Msg("Failed to remove tag file")
 		return fmt.Errorf("failed to remove tag %s: %w", tagName, err)
 	}
-	e.Runtime.Logger().Info().Str("deletedTag", tagName).Msg("タグを削除しました")
 	e.TagList()
 	return nil
 }
@@ -396,6 +355,12 @@ func (e *Engine) Tree(tagName string) error {
 		}
 	}
 
+	data2, _ := types.ReadTagData(e.Runtime, tagName)
+	_, _, _, _, allConfigs, err2 := domain.ResolveRunOptions(types.RunOptions{Tag: tagName}, data2, e.Runtime)
+	if err2 == nil {
+		tracker := types.TrackEnvOverrides(allConfigs)
+		tracker.PrintOverrides(e.Runtime.Logger(), false, false)
+	}
 	return nil
 }
 
@@ -488,7 +453,7 @@ func (e *Engine) Dump(opts types.RunOptions, shell string) error {
 		}
 	}
 
-	_, _, _, finalEnv, err := domain.ResolveRunOptions(opts, tagData, e.Runtime)
+	_, _, _, finalEnv, _, err := domain.ResolveRunOptions(opts, tagData, e.Runtime)
 	if err != nil {
 		return err
 	}
