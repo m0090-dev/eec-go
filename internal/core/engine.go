@@ -209,13 +209,16 @@ func (e *Engine) GenScript() error {
 
 // Info returns structured information about the environment or config.
 func (e *Engine) Info() error {
-	infos := []string{}
-	infos = append(infos, fmt.Sprintf("version=%s", types.VERSION))
-	infos = append(infos, fmt.Sprintf("pid=%d", e.Executor().Getpid()))
-	infos = append(infos, fmt.Sprintf("goOS=%s", e.Env().GOOS()))
-	infos = append(infos, fmt.Sprintf("commitHash=%s", types.BuildHash))
-	infos = append(infos, fmt.Sprintf("logMode=%s", types.LogMode))
-	e.Runtime.Logger().Info().Strs("infos", infos).Msg("eec Info messages")
+	infos := map[string]interface{}{
+		"version":    types.VERSION,
+		"pid":        e.Executor().Getpid(),
+		"goOS":       e.Env().GOOS(),
+		"commitHash": types.BuildHash,
+		"logMode":    types.LogMode,
+	}
+
+	// general.PrintBlock を呼び出す
+	general.PrintBlock("eec Information", infos)
 	return nil
 }
 
