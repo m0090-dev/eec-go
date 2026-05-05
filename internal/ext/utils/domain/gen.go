@@ -38,100 +38,36 @@ if "%1"=="run" (
 `
 
 	// Windows batch script (for cmd.exe)
+	// 1. プログラム未指定用：第一引数を --program にする
 	windowsTagUtilsScript = `@echo off
 chcp 65001 >nul
 setlocal enabledelayedexpansion
-
-REM Use the first argument as --program
 set PROGRAM=%1
 shift
-
-REM Concatenate the remaining arguments with commas for --program-args
 set ARGS=
 :loop
 if "%~1"=="" goto run
-if defined ARGS (
-  set ARGS=!ARGS!,%~1
-) else (
-  set ARGS=%~1
-)
+if defined ARGS (set ARGS=!ARGS!,%~1) else (set ARGS=%~1)
 shift
 goto loop
-
 :run
-eec run --deleter-hide-window --hide-window --tag %TAGNAME% --program %PROGRAM% --program-args=!ARGS!
+eec run --tag %TAGNAME% --program %PROGRAM% --program-args=!ARGS!
 `
 
-	windowsTagUtilsScriptProgram = `@echo off
+	// 2. プログラム指定済み用：全引数を --program-args にする
+	windowsTagUtilsScriptProgramFixed = `@echo off
 chcp 65001 >nul
 setlocal enabledelayedexpansion
-
-REM Use the first argument as --program
-set PROGRAM=%1
-shift
-
-REM Concatenate the remaining arguments with commas for --program-args
 set ARGS=
 :loop
 if "%~1"=="" goto run
-if defined ARGS (
-  set ARGS=!ARGS!,%~1
-) else (
-  set ARGS=%~1
-)
+if defined ARGS (set ARGS=!ARGS!,%~1) else (set ARGS=%~1)
 shift
 goto loop
-
 :run
-eec run --deleter-hide-window --hide-window --tag %TAGNAME% --program %PROGRAM% 
+eec run --tag %TAGNAME% --program-args=!ARGS!
 `
 
-	windowsTagUtilsScriptProgramArgs = `@echo off
-chcp 65001 >nul
-setlocal enabledelayedexpansion
-
-REM Use the first argument as --program
-set PROGRAM=%1
-shift
-
-REM Concatenate the remaining arguments with commas for --program-args
-set ARGS=
-:loop
-if "%~1"=="" goto run
-if defined ARGS (
-  set ARGS=!ARGS!,%~1
-) else (
-  set ARGS=%~1
-)
-shift
-goto loop
-
-:run
-eec run --deleter-hide-window --hide-window --tag %TAGNAME% --program-args=!ARGS!
-`
-
-	windowsTagSimpleUtilsScript = `@echo off
-setlocal enabledelayedexpansion
-
-REM Use the first argument as --program
-set PROGRAM=%1
-shift
-
-REM Concatenate the remaining arguments with commas for --program-args
-set ARGS=
-:loop
-if "%~1"=="" goto run
-if defined ARGS (
-  set ARGS=!ARGS!,%~1
-) else (
-  set ARGS=%~1
-)
-shift
-goto loop
-
-:run
-eec run --deleter-hide-window --hide-window --tag %TAGNAME%
-`
 	unixTagUtilsScript       = ``
 	unixTagSimpleUtilsScript = ``
 	unixWrapEECScript        = `#!/bin/bash
@@ -173,17 +109,8 @@ func GenWindowsTagUtilsScript(tagName string) string {
 	return toWindowsLineEndings(script)
 }
 
-func GenWindowsSimpleTagUtilsScript(tagName string) string {
-	script := strings.ReplaceAll(windowsTagSimpleUtilsScript, "%TAGNAME%", tagName)
-	return toWindowsLineEndings(script)
-}
-
-func GenWindowsTagUtilsScriptProgram(tagName string) string {
-	script := strings.ReplaceAll(windowsTagUtilsScriptProgram, "%TAGNAME%", tagName)
-	return toWindowsLineEndings(script)
-}
-func GenWindowsTagUtilsScriptProgramArgs(tagName string) string {
-	script := strings.ReplaceAll(windowsTagUtilsScriptProgramArgs, "%TAGNAME%", tagName)
+func GenWindowsTagUtilsScriptProgramFixed(tagName string) string {
+	script := strings.ReplaceAll(windowsTagUtilsScriptProgramFixed, "%TAGNAME%", tagName)
 	return toWindowsLineEndings(script)
 }
 
@@ -304,26 +231,13 @@ func GenUtilsScript(rt interfaces.Runtime) {
 
 		if rt.Env().GOOS() == "windows" {
 			hasProgram := tagData.Program != "" || config.Program.Path != ""
-			hasProgramArgs := len(tagData.ProgramArgs) != 0 || len(config.Program.Args) != 0
-
-			switch {
-			case hasProgram:
-				tagUtilsScriptContent = GenWindowsSimpleTagUtilsScript(name)
-
-			case !hasProgram && hasProgramArgs:
-				tagUtilsScriptContent = GenWindowsTagUtilsScriptProgramArgs(name)
-
-			case !hasProgram && !hasProgramArgs:
-				if len(config.Program.Args) != 0 {
-					tagUtilsScriptContent = GenWindowsSimpleTagUtilsScript(name)
-				} else {
-					tagUtilsScriptContent = GenWindowsTagUtilsScriptProgram(name)
-				}
-
-			default:
-				tagUtilsScriptContent = GenWindowsSimpleTagUtilsScript(name)
+			if hasProgram {
+				// すでにプログラムが決まっているなら、引数は全部 program-args へ
+				tagUtilsScriptContent = GenWindowsTagUtilsScriptProgramFixed(name)
+			} else {
+				// プログラムが決まっていないなら、1つ目をプログラムとして扱う
+				tagUtilsScriptContent = GenWindowsTagUtilsScript(name)
 			}
-
 			tagUtilsScriptFileName = general.AddExtension(baseName, ".cmd")
 
 		} else {
