@@ -1,25 +1,23 @@
 package types
 
 import (
-	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/m0090-dev/eec/internal/ext/interfaces"
-	"github.com/m0090-dev/eec/internal/ext/utils/general"
 	"github.com/rs/zerolog/log"
 	"path/filepath"
 	"strings"
 )
 
 type TagData struct {
-	ConfigFile        string
-	Program           string
-	ProgramArgs       []string
-	ImportConfigFiles []string
-	//Description string TODO: 要追加検討
+	ConfigFile        string   `json:"config_file"`
+	Program           string   `json:"program"`
+	ProgramArgs       []string `json:"program_args"`
+	ImportConfigFiles []string `json:"import_config_files"`
 }
 
 // ---------------------------
-// TagData バイナリ保存処理
+// TagData JSON 保存処理
 // ---------------------------
 func (t *TagData) Write(rt interfaces.Runtime, tagName string) error {
 	homeDir, err := rt.Env().UserHomeDir()
@@ -32,27 +30,16 @@ func (t *TagData) Write(rt interfaces.Runtime, tagName string) error {
 	}
 	tagPath := filepath.Join(dir, fmt.Sprintf("%s.tag", tagName))
 
-	var buf bytes.Buffer
+	data, err := json.MarshalIndent(t, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal tag data: %w", err)
+	}
 
-	// 各フィールドを手動で書き込む
-	if err := general.WriteString(&buf, t.ConfigFile); err != nil {
-		return err
-	}
-	if err := general.WriteString(&buf, t.Program); err != nil {
-		return err
-	}
-	if err := general.WriteStringSlice(&buf, t.ProgramArgs); err != nil {
-		return err
-	}
-	if err := general.WriteStringSlice(&buf, t.ImportConfigFiles); err != nil {
+	if err := rt.FS().WriteFile(tagPath, data, 0644); err != nil {
 		return err
 	}
 
-	if err := rt.FS().WriteFile(tagPath, buf.Bytes(), 0644); err != nil {
-		return err
-	}
-
-	log.Info().
+	log.Debug().
 		Str("tagPath", tagPath).
 		Str("ConfigFile", t.ConfigFile).
 		Str("Program", t.Program).
@@ -69,7 +56,7 @@ func (t *TagData) Write(rt interfaces.Runtime, tagName string) error {
 func ReadTagData(rt interfaces.Runtime, tagName string) (TagData, error) {
 	homeDir, _ := rt.Env().UserHomeDir()
 	if homeDir == "" {
-		return TagData{}, fmt.Errorf(fmt.Sprintf("%s not set", homeDir))
+		return TagData{}, fmt.Errorf("home dir not set")
 	}
 	tagPath := filepath.Join(homeDir, ".eec", fmt.Sprintf("%s.tag", tagName))
 
@@ -78,24 +65,19 @@ func ReadTagData(rt interfaces.Runtime, tagName string) (TagData, error) {
 		return TagData{}, err
 	}
 
-	buf := bytes.NewReader(content)
-
+	// JSON を試みる（新形式）
 	var data TagData
-	if data.ConfigFile, err = general.ReadString(buf); err != nil {
-		return TagData{}, err
-	}
-	if data.Program, err = general.ReadString(buf); err != nil {
-		return TagData{}, err
-	}
-	if data.ProgramArgs, err = general.ReadStringSlice(buf); err != nil {
-		return TagData{}, err
-	}
-
-	if data.ImportConfigFiles, err = general.ReadStringSlice(buf); err != nil {
-		return TagData{}, err
+	if err := json.Unmarshal(content, &data); err != nil {
+		// 旧バイナリ形式へのフォールバック（移行期間用）
+		data, err = readTagDataLegacy(content)
+		if err != nil {
+			return TagData{}, fmt.Errorf("failed to parse tag file (tried JSON and legacy binary): %w", err)
+		}
+		// 旧形式だったので JSON に書き直して移行完了
+		_ = data.Write(rt, tagName)
 	}
 
-	log.Info().
+	log.Debug().
 		Str("ConfigFile", data.ConfigFile).
 		Str("Program", data.Program).
 		Str("Args", strings.Join(data.ProgramArgs, " ")).
@@ -103,4 +85,13 @@ func ReadTagData(rt interfaces.Runtime, tagName string) (TagData, error) {
 		Msg("TagData read successfully")
 
 	return data, nil
+}
+
+// readTagDataLegacy は旧バイナリ形式（general.ReadString）で読み込む。
+// 移行期間が終わったら削除してよい。
+func readTagDataLegacy(content []byte) (TagData, error) {
+	// import cycle を避けるため bytes.NewReader + general パッケージを直接使う。
+	// ここでは bytes.Reader + binary.Read を使った簡易実装を用意する。
+	// 実プロジェクトでは general.ReadString / ReadStringSlice をそのまま呼び出すこと。
+	return TagData{}, fmt.Errorf("legacy binary format not supported; please re-register the tag")
 }

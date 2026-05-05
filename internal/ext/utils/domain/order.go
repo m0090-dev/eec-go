@@ -4,36 +4,31 @@ import "github.com/m0090-dev/eec/internal/ext/types"
 import "github.com/m0090-dev/eec/internal/ext/interfaces"
 import "path/filepath"
 
+// ResolveRunOptions は戻り値に []types.Config (allConfigs) を追加。
 func ResolveRunOptions(
 	opts types.RunOptions,
 	tagData types.TagData,
 	rt interfaces.Runtime,
-) (configFile string, program string, programArgs []string, finalEnv []string, err error) {
-	var config types.Config
-	allConfigs := []types.Config{}
+) (configFile string, program string, programArgs []string, finalEnv []string, allConfigs []types.Config, err error) {
 
-	// ------------------------
-	// ConfigFile の決定
-	// ------------------------
+	var config types.Config
+	allConfigs = []types.Config{}
+
 	switch {
 	case opts.ConfigFile != "":
-		configFile = opts.ConfigFile // CLI優先
+		configFile = opts.ConfigFile
 	case tagData.ConfigFile != "":
-		configFile = tagData.ConfigFile // タグ
+		configFile = tagData.ConfigFile
 	}
 
-	// 絶対パス化はこのタイミングで行う
 	if configFile != "" {
-		if abs, err := filepath.Abs(configFile); err == nil {
+		if abs, absErr := filepath.Abs(configFile); absErr == nil {
 			configFile = abs
 		} else {
-			rt.Logger().Warn().Err(err).Msg("failed to resolve absolute path for configFile")
+			rt.Logger().Warn().Err(absErr).Msg("failed to resolve absolute path for configFile")
 		}
 	}
 
-	// ----------------------
-	// メイン configとインライン
-	// ----------------------
 	if configFile != "" && rt.FS().FileExists(configFile) {
 		config, err = types.ReadConfig(rt, configFile)
 		if err != nil {
@@ -43,34 +38,25 @@ func ResolveRunOptions(
 		}
 	}
 
-	// ----------------------
-	// imports（優先度：低 → 高 の順）
-	// ----------------------
-
-	// タグで指定された imports（最も低い）
 	for _, imp := range tagData.ImportConfigFiles {
-		cfg, err := ReadOrFallbackRecursive(opts, rt, imp)
-		if err != nil {
-			return "", "", nil, nil, err // ← continue ではなく return
+		cfg, impErr := ReadOrFallbackRecursive(opts, rt, imp)
+		if impErr != nil {
+			return "", "", nil, nil, nil, impErr
 		}
 		allConfigs = append(allConfigs, cfg)
 	}
 
-	// CLI で指定された imports（中間）
 	for _, imp := range opts.Imports {
-		cfg, err := ReadOrFallbackRecursive(opts, rt, imp)
-		if err != nil {
-			return "", "", nil, nil, err // ← continue ではなく return
+		cfg, impErr := ReadOrFallbackRecursive(opts, rt, imp)
+		if impErr != nil {
+			return "", "", nil, nil, nil, impErr
 		}
 		allConfigs = append(allConfigs, cfg)
 	}
 
-	// 3. 【優先度：高】インライン設定を読み込む (ファイルの設定を上書きできるように最後に配置)
-	inlineCfg, err := resolveInlineFromOptions(opts, rt)
-	if err == nil && (inlineCfg.RawEnvs != nil || inlineCfg.Program.Path != "") {
+	inlineCfg, inlineErr := resolveInlineFromOptions(opts, rt)
+	if inlineErr == nil && (inlineCfg.RawEnvs != nil || inlineCfg.Program.Path != "") {
 		allConfigs = append(allConfigs, inlineCfg)
-
-		// もしインライン側に program の指定があれば、それを優先候補にする
 		if inlineCfg.Program.Path != "" && opts.Program == "" {
 			program = inlineCfg.Program.Path
 			if len(inlineCfg.Program.Args) > 0 && len(opts.ProgramArgs) == 0 {
@@ -79,9 +65,6 @@ func ResolveRunOptions(
 		}
 	}
 
-	// ------------------------
-	// Program の決定
-	// ------------------------
 	switch {
 	case opts.Program != "":
 		program = opts.Program
@@ -91,9 +74,6 @@ func ResolveRunOptions(
 		program = config.Program.Path
 	}
 
-	// ------------------------
-	// ProgramArgs の決定
-	// ------------------------
 	switch {
 	case len(opts.ProgramArgs) != 0:
 		programArgs = opts.ProgramArgs
@@ -103,19 +83,14 @@ func ResolveRunOptions(
 		programArgs = config.Program.Args
 	}
 
-	// ------------------------
-	// 環境変数を構築
-	// ------------------------
 	finalEnv = rt.Env().Environ()
-
 	for _, cfg := range allConfigs {
 		finalEnv = cfg.BuildEnvs(rt, finalEnv, opts.Separator)
 	}
 
-	return configFile, program, programArgs, finalEnv, nil
+	return configFile, program, programArgs, finalEnv, allConfigs, nil
 }
 
-// ヘルパー: どのインラインフラグを使うか判定
 func resolveInlineFromOptions(opts types.RunOptions, rt interfaces.Runtime) (types.Config, error) {
 	if opts.InlineConfigToml != "" {
 		return types.ReadInlineConfig(rt, opts.InlineConfigToml, "toml")

@@ -19,4 +19,7 @@ type RunOptions struct {
 	DeleterPath       string
 	DeleterHideWindow bool
 	Separator         string
+	Verbose           bool
+	DuplicateStrict   bool
+	DuplicateNoWarn   bool
 }
