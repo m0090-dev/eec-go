@@ -38,7 +38,7 @@ type Logger interface {
 
 	WithField(key string, value interface{}) Logger
 	WithFields(fields map[string]interface{}) Logger
-
+	EnableDebug() Logger
 	Level(l Level) Logger
 	Output(w io.Writer) Logger
 }

@@ -88,3 +88,12 @@ func (d *DefaultLogger) Level(l interfaces.Level) interfaces.Logger {
 func (d *DefaultLogger) Output(w io.Writer) interfaces.Logger {
 	return &DefaultLogger{l: d.l.Output(w)}
 }
+
+func (d *DefaultLogger) EnableDebug() interfaces.Logger {
+	// 🔴 ここでグローバルも上げる
+	zerolog.SetGlobalLevel(zerolog.DebugLevel)
+
+	return &DefaultLogger{
+		l: d.l.Level(zerolog.DebugLevel),
+	}
+}
