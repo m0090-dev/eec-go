@@ -100,3 +100,17 @@ func GetFilesWithExtension(dir string, ext string) ([]string, error) {
 
 	return files, nil
 }
+
+func NormalizeSourcePath(fileName string) string {
+	if fileName == "" {
+		return ""
+	}
+
+	abs, err := filepath.Abs(fileName)
+	if err != nil {
+		// タグ名や不正パスなど → そのまま返す
+		return fileName
+	}
+
+	return abs
+}

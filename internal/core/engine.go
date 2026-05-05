@@ -240,8 +240,15 @@ func (e *Engine) TagAdd(name string, tag types.TagData) error {
 
 	// make configFile absolute if present
 	if tag.ConfigFile != "" {
-		if abs, err := filepath.Abs(tag.ConfigFile); err == nil {
-			tag.ConfigFile = abs
+		if e.FS().FileExists(tag.ConfigFile) {
+			tag.ConfigFile = general.NormalizeSourcePath(tag.ConfigFile)
+		}
+	}
+	// 2. ImportConfigFiles の各要素を正規化 (ここが足りなかった場所)
+	for i, imp := range tag.ImportConfigFiles {
+		// ファイルとして存在する場合のみ絶対パス化する
+		if e.FS().FileExists(imp) {
+			tag.ImportConfigFiles[i] = general.NormalizeSourcePath(imp)
 		}
 	}
 
