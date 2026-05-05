@@ -203,24 +203,11 @@ func mapToMetaConfig(m map[string]interface{}) MetaConfig {
 	}
 	return mc
 }
-func normalizeSourcePath(fileName string) string {
-	if fileName == "" {
-		return ""
-	}
-
-	abs, err := filepath.Abs(fileName)
-	if err != nil {
-		// タグ名や不正パスなど → そのまま返す
-		return fileName
-	}
-
-	return abs
-}
 
 func ReadConfig(rt interfaces.Runtime, fileName string) (Config, error) {
 	ext := general.FileExt(fileName)
 	config := Config{}
-	config.SourcePath = normalizeSourcePath(fileName)
+	config.SourcePath = general.NormalizeSourcePath(fileName)
 	if ext == ".toml" {
 		return ReadToml(rt, fileName)
 	} else if ext == ".yaml" || ext == ".yml" {
@@ -309,7 +296,7 @@ func ReadJson(rt interfaces.Runtime, fileName string) (Config, error) {
 	}
 
 	var config Config
-	config.SourcePath = normalizeSourcePath(fileName)
+	config.SourcePath = general.NormalizeSourcePath(fileName)
 	err = json.Unmarshal(data, &config)
 	if err == nil {
 		config.NormalizeConfigs(rt)
@@ -326,7 +313,7 @@ func ReadYaml(rt interfaces.Runtime, fileName string) (Config, error) {
 	}
 
 	var config Config
-	config.SourcePath = normalizeSourcePath(fileName)
+	config.SourcePath = general.NormalizeSourcePath(fileName)
 	err = yaml.Unmarshal(data, &config)
 	if err == nil {
 		config.NormalizeConfigs(rt)
@@ -344,7 +331,7 @@ func ReadToml(rt interfaces.Runtime, fileName string) (Config, error) {
 	}
 
 	var config Config
-	config.SourcePath = normalizeSourcePath(fileName)
+	config.SourcePath = general.NormalizeSourcePath(fileName)
 	err = toml.Unmarshal(data, &config)
 
 	if err == nil {
@@ -359,7 +346,7 @@ func ReadEnv(rt interfaces.Runtime, fileName string) (Config, error) {
 	var config Config
 	var envMap map[string]string
 	var err error
-	config.SourcePath = normalizeSourcePath(fileName)
+	config.SourcePath = general.NormalizeSourcePath(fileName)
 	envMap, err = godotenv.Read(fileName)
 	if err != nil {
 		rt.Logger().Fatal().Err(err).Msg("Error reading .env file")
