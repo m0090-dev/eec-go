@@ -1,17 +1,18 @@
 name: Test
 
 on:
-#  push:
-    #branches: [ main]
-  #pull_request:
-    #branches: [ main ]
-  workflow_dispatch: 
-    description: "将来的なテスト用"
+  push:
+    tags:
+      - 'v*'
+  pull_request:
+
 jobs:
   test:
     strategy:
+      fail-fast: false
       matrix:
         os: [windows-latest, ubuntu-latest, macos-latest]
+
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -22,29 +23,119 @@ jobs:
         with:
           go-version: '1.22'
 
-      # 1. ロジックのテスト (Mockを使用したテスト)
+      # -----------------------------
+      # 1. Unit Test
+      # -----------------------------
       - name: Run Go Unit Tests
         run: go test -v ./...
 
-      # 2. Mageのインストール (ビルド用)
+      # -----------------------------
+      # 2. Install Mage
+      # -----------------------------
       - name: Install Mage
         run: go install github.com/magefile/mage@latest
 
-      # 3. 実際にビルドして eec-test-configs を叩く (インテグレーションテスト)
-      - name: Build CLI
-        run: |
-          export PATH=$PATH:$(go env GOPATH)/bin
-          mage BuildCLIRelease
+      # -----------------------------
+      # 3. Add GOPATH bin to PATH (OS-safe)
+      # -----------------------------
+      - name: Add Go bin to PATH
+        shell: bash
+        run: echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
 
-      - name: Run Integration Tests (CLI check)
+      # -----------------------------
+      # 4. Build CLI
+      # -----------------------------
+      - name: Build CLI
+        shell: bash
+        run: mage BuildCLIRelease
+
+      - name: Add eec to PATH
+        shell: bash
+        run: echo "$(pwd)/build" >> $GITHUB_PATH
+
+      # -----------------------------
+      # 5. test-case1 (TOML分割耐性)
+      # -----------------------------
+      - name: Test Case1 - Semicolon Safety
         shell: bash
         run: |
-          # ビルドされたバイナリへのパスを通す
-          export PATH=$PATH:$(pwd)/build
-          
-          echo "=== Testing with JSON config ==="
-          eec --config eec-test-configs/test.json --tag dev-test info
-          
-          echo "=== Testing with TOML config (PATH Merge Check) ==="
-          # 期待したパスが含まれているか grep 等で検証する
-          # 例: eec の出力をキャプチャして中身をチェックするスクリプトを回す
+          echo "=== test-case1: semicolon should NOT split ==="
+          OUTPUT=$(eec dump -c eec-test-configs/test-case1/test1.toml)
+          echo "$OUTPUT"
+          echo "$OUTPUT" | grep 'TEST_VAR=10;10'
+
+      - name: Test Case1 - Multi file merge
+        shell: bash
+        run: |
+          echo "=== test-case1: merge TOML ==="
+          OUTPUT=$(eec dump -c eec-test-configs/test-case1/test2.toml)
+          echo "$OUTPUT"
+          echo "$OUTPUT" | grep 'DUMMY=hello'
+
+      # -----------------------------
+      # 6. test-case2 JSON
+      # -----------------------------
+      - name: Test Case2 - JSON basic expansion
+        shell: bash
+        run: |
+          echo "=== JSON config expansion ==="
+          OUTPUT=$(eec dump -c eec-test-configs/test-case2/test.json)
+          echo "$OUTPUT"
+
+          echo "$OUTPUT" | grep 'APP_NAME=eec-json-service'
+          echo "$OUTPUT" | grep 'APP_HOME='
+          echo "$OUTPUT" | grep 'DEPLOY_TAG='
+          echo "$OUTPUT" | grep 'TEST='
+          echo "$OUTPUT" | grep 'PATH='
+
+      # -----------------------------
+      # 7. PATH array merge
+      # -----------------------------
+      - name: Test Case2 - PATH array merge
+        shell: bash
+        run: |
+          echo "=== PATH array merge ==="
+          OUTPUT=$(eec dump -c eec-test-configs/test-case2/test2.json)
+          echo "$OUTPUT"
+
+          echo "$OUTPUT" | grep 'dummy\\test-path-array'
+          echo "$OUTPUT" | grep 'another\\dummy-bin'
+
+      # -----------------------------
+      # 8. TOML topo sort
+      # -----------------------------
+      - name: Test Case2 - Topological Sort
+        shell: bash
+        run: |
+          echo "=== Topological dependency resolution ==="
+          OUTPUT=$(eec dump -c eec-test-configs/test-case2/test.toml)
+          echo "$OUTPUT"
+
+          echo "$OUTPUT" | grep 'STEP_01=Alpha'
+          echo "$OUTPUT" | grep 'STEP_10=Alpha-Beta-Gamma-Delta-Epsilon-Zeta-Eta-Theta-Iota-Kappa'
+          echo "$OUTPUT" | grep 'FINAL_CHECK=Result: Alpha-Beta-Gamma-Delta-Epsilon-Zeta-Eta-Theta-Iota-Kappa'
+
+      # -----------------------------
+      # 9. YAML order stress
+      # -----------------------------
+      - name: Test Case2 - YAML order stress
+        shell: bash
+        run: |
+          echo "=== YAML dependency resolution ==="
+          OUTPUT=$(eec dump -c eec-test-configs/test-case2/test.yaml)
+          echo "$OUTPUT"
+
+          echo "$OUTPUT" | grep 'STEP_10=Alpha-Beta-Gamma-Delta-Epsilon-Zeta-Eta-Theta-Iota-Kappa'
+          echo "$OUTPUT" | grep 'FINAL_CHECK=Result:Alpha-Beta-Gamma-Delta-Epsilon-Zeta-Eta-Theta-Iota-Kappa'
+
+      # -----------------------------
+      # 10. Cross check PATH expansion
+      # -----------------------------
+      - name: Cross-check PATH contains expanded values
+        shell: bash
+        run: |
+          OUTPUT=$(eec dump -c eec-test-configs/test-case2/test.toml)
+          echo "$OUTPUT"
+
+          echo "$OUTPUT" | grep 'D:\\work\\Alpha-Beta-Gamma-Delta-Epsilon-Zeta-Eta-Theta-Iota-Kappa'
+          echo "$OUTPUT" | grep 'C:\\test\\Alpha'

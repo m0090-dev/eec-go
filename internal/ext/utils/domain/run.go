@@ -171,6 +171,10 @@ func LaunchDeleter(rt interfaces.Runtime, opts types.RunOptions) error {
 			execCmd, err = rt.Executor().StartProcess(
 				deleterPath, []string{}, rt.Env().Environ(), nil, out, errOut, deleterHideWindow,
 			)
+			if err != nil {
+				rt.Logger().Error().Err(err).Msg("failed to start process")
+				return err // または適切なエラー処理
+			}
 			pid = execCmd.Process.Pid
 		} else {
 			var out, errOut *os.File
@@ -180,6 +184,10 @@ func LaunchDeleter(rt interfaces.Runtime, opts types.RunOptions) error {
 			execCmd, err = rt.Executor().StartProcess(
 				deleterPath, []string{}, rt.Env().Environ(), nil, out, errOut, deleterHideWindow,
 			)
+			if err != nil {
+				rt.Logger().Error().Err(err).Msg("failed to start process")
+				return err // または適切なエラー処理
+			}
 			pid = execCmd.Process.Pid
 		}
 		if err != nil {
