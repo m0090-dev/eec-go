@@ -36,27 +36,32 @@ jobs:
         run: go install github.com/magefile/mage@latest
 
       # -----------------------------
-      # 3. Build CLI
+      # 3. Add GOPATH bin to PATH (OS-safe)
+      # -----------------------------
+      - name: Add Go bin to PATH
+        shell: bash
+        run: echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+
+      # -----------------------------
+      # 4. Build CLI
       # -----------------------------
       - name: Build CLI
-        run: |
-          export PATH=$PATH:$(go env GOPATH)/bin
-          mage BuildCLIRelease
+        shell: bash
+        run: mage BuildCLIRelease
 
       - name: Add eec to PATH
+        shell: bash
         run: echo "$(pwd)/build" >> $GITHUB_PATH
 
       # -----------------------------
-      # 4. test-case1 (TOML分割耐性)
+      # 5. test-case1 (TOML分割耐性)
       # -----------------------------
       - name: Test Case1 - Semicolon Safety
         shell: bash
         run: |
           echo "=== test-case1: semicolon should NOT split ==="
           OUTPUT=$(eec dump -c eec-test-configs/test-case1/test1.toml)
-
           echo "$OUTPUT"
-
           echo "$OUTPUT" | grep 'TEST_VAR=10;10'
 
       - name: Test Case1 - Multi file merge
@@ -64,20 +69,17 @@ jobs:
         run: |
           echo "=== test-case1: merge TOML ==="
           OUTPUT=$(eec dump -c eec-test-configs/test-case1/test2.toml)
-
           echo "$OUTPUT"
-
           echo "$OUTPUT" | grep 'DUMMY=hello'
 
       # -----------------------------
-      # 5. test-case2 JSON (基本展開)
+      # 6. test-case2 JSON
       # -----------------------------
       - name: Test Case2 - JSON basic expansion
         shell: bash
         run: |
           echo "=== JSON config expansion ==="
           OUTPUT=$(eec dump -c eec-test-configs/test-case2/test.json)
-
           echo "$OUTPUT"
 
           echo "$OUTPUT" | grep 'APP_NAME=eec-json-service'
@@ -87,57 +89,52 @@ jobs:
           echo "$OUTPUT" | grep 'PATH='
 
       # -----------------------------
-      # 6. test-case2 JSON (PATH配列マージ)
+      # 7. PATH array merge
       # -----------------------------
       - name: Test Case2 - PATH array merge
         shell: bash
         run: |
           echo "=== PATH array merge ==="
           OUTPUT=$(eec dump -c eec-test-configs/test-case2/test2.json)
-
           echo "$OUTPUT"
 
           echo "$OUTPUT" | grep 'dummy\\test-path-array'
           echo "$OUTPUT" | grep 'another\\dummy-bin'
 
       # -----------------------------
-      # 7. test-case2 TOML (トポロジカルソート)
+      # 8. TOML topo sort
       # -----------------------------
       - name: Test Case2 - Topological Sort
         shell: bash
         run: |
           echo "=== Topological dependency resolution ==="
           OUTPUT=$(eec dump -c eec-test-configs/test-case2/test.toml)
-
           echo "$OUTPUT"
 
-          # 最終結果チェック
           echo "$OUTPUT" | grep 'STEP_01=Alpha'
           echo "$OUTPUT" | grep 'STEP_10=Alpha-Beta-Gamma-Delta-Epsilon-Zeta-Eta-Theta-Iota-Kappa'
           echo "$OUTPUT" | grep 'FINAL_CHECK=Result: Alpha-Beta-Gamma-Delta-Epsilon-Zeta-Eta-Theta-Iota-Kappa'
 
       # -----------------------------
-      # 8. test-case2 YAML (Map順序耐性)
+      # 9. YAML order stress
       # -----------------------------
       - name: Test Case2 - YAML order stress
         shell: bash
         run: |
           echo "=== YAML dependency resolution ==="
           OUTPUT=$(eec dump -c eec-test-configs/test-case2/test.yaml)
-
           echo "$OUTPUT"
 
           echo "$OUTPUT" | grep 'STEP_10=Alpha-Beta-Gamma-Delta-Epsilon-Zeta-Eta-Theta-Iota-Kappa'
           echo "$OUTPUT" | grep 'FINAL_CHECK=Result:Alpha-Beta-Gamma-Delta-Epsilon-Zeta-Eta-Theta-Iota-Kappa'
 
       # -----------------------------
-      # 9. クロスチェック（壊れやすいポイント）
+      # 10. Cross check PATH expansion
       # -----------------------------
       - name: Cross-check PATH contains expanded values
         shell: bash
         run: |
           OUTPUT=$(eec dump -c eec-test-configs/test-case2/test.toml)
-
           echo "$OUTPUT"
 
           echo "$OUTPUT" | grep 'D:\\work\\Alpha-Beta-Gamma-Delta-Epsilon-Zeta-Eta-Theta-Iota-Kappa'
