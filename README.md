@@ -280,6 +280,12 @@ GOPATH=/home/user/go
 PATH=/usr/local/go/bin:/usr/bin
 ```
 
+${} variable expansion and $() command substitution are supported in TOML, YAML, and JSON, but not in .env files.
+
+
+When a variable is defined as an array, its values are merged into (appended to) the existing variable rather than replacing it. For example, PATH = ["C:\\my\\bin"] appends to the current PATH, whereas PATH = "C:\\my\\bin" overwrites it entirely.
+
+
 ### Variable Expansion
 
 Use `${}` to reference other environment variables within values. References are resolved via **topological sort**, so declaration order does not matter — forward references work fine.
