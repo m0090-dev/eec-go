@@ -1,98 +1,138 @@
-# eec (env-exec) 
+# eec (env-exec)
 
 `eec` is a **Go-based Environment Execution Controller**.  
-It allows you to safely manage and execute environments based on configuration files (TOML/YAML/JSON/.env) without polluting your system environment.  
-
-With `eec`, you can:
-- Run programs with temporary environments defined in configuration files  
-- Group multiple environments under "tags" for easy access  
-- Generate utility scripts for quick launching  
-- Use interactive or restart modes for flexible workflow  
-- Build the CLI, and libraries using `mage` (`mage buildcli`, `mage buildlib`)
+It lets you safely manage and execute programs with environment variables defined in configuration files (TOML / YAML / JSON / .env), without polluting your system environment.
 
 ---
 
 ## Features
-- Configuration-file-based environment definitions (TOML/YAML/JSON/.env)
-- Tags for grouping and easy execution
+
+- Configuration-file-based environment definitions (TOML / YAML / JSON / .env)
+- **Tags** for grouping and reusing multiple environments
 - Script generation for shortcut commands
-- Safe execution without modifying the global system
+- Safe execution — never modifies the global system environment
 - Interactive REPL and restart functionality with state management
-- Build automation using `mage`:
+- Duplicate environment variable tracking with configurable warning behavior (`--duplicate-strict` / `--duplicate-no-warn`)
+- Environment variable dump support for both Unix and Windows shells
+- Build automation via `mage`:
   - `mage buildcli debug` / `mage buildcli release`
   - `mage buildlib debug` / `mage buildlib release`
-  - **Note:** On Windows, `GOOS=linux` is **not supported** for `mage buildlib`
+  - **Note:** `GOOS=linux` is **not supported** for `mage buildlib` on Windows
 
 ---
 
-## Core Commands
+## Installation
 
-### 1. run [command] [flags]
-Run a program with a given environment.
+```bash
+# Build from source
+mage buildcli release
+```
 
-Example:
+---
+
+## Commands
+
+### 1. `run` — Run a program with a managed environment
+
+Temporarily applies environment variables from a config file or tag, then launches the specified program. The global system environment is never affected.
+
+```bash
 eec run -c test.toml -p powershell -a "-NoExit","-Command","Write-Output 'hello world'"
+```
 
+| Flag | Description |
+|---|---|
+| `-c`, `--config-file` | Path to the configuration file |
+| `-p`, `--program` | Program to execute |
+| `-a`, `--args` | Program arguments (comma-separated) |
+| `--tag` | Tag name to use |
+| `-i`, `--imports` | Additional config files or tags to import (comma-separated) |
+| `--wait-timeout` | Process wait timeout in seconds |
+| `--hide-window` | Launch the program without a visible window |
+| `--deleter-path` | Path to the deleter program |
+| `--deleter-hide-window` | Launch the deleter without a visible window |
+| `--duplicate-strict` | Treat duplicate environment variable definitions as an error |
+| `--duplicate-no-warn` | Suppress warnings for duplicate environment variables |
+| `-v`, `--verbose` | Enable debug logging |
 
-Effect:
-- Loads environment from `test.toml`
-- Launches `powershell` and runs `echo hello world`
-- The environment is temporary and does not affect the system globally
+**Run using a tag:**
+
+```bash
+eec run --tag dev
+```
 
 ---
 
-### 2. tag add [tag name] [flags]
-Register a configuration or program as a reusable tag.
+### 2. `tag add` — Register a tag
 
-Example:
+Bundles multiple config files and/or other tags into a single named tag for easy reuse.
+
+```bash
+# Bundle multiple config files
 eec tag add dev -i "base-dev.toml,go-dev.toml,python-dev.toml"
+
+# Include other tags as well
 eec tag add dev -i "base-dev.toml,testTag1,testTag2"
 
-Effect:
-- Creates a `dev` tag that combines multiple TOML configurations
-- Allows easy launching with `--tag dev`
+# Specify a config file directly (program path/args are auto-filled)
+eec tag add myapp -c myapp.toml
+```
+
+- Items passed via `-i` that exist as files are automatically normalized to absolute paths.
+- When `--config-file` is specified, `program.path` and `program.args` from that config are automatically populated into the tag.
 
 ---
 
-### 3. tag list
-List all registered tags.
+### 3. `tag list` — List all tags
 
-Example:
+Displays all currently registered tags.
+
+```bash
 eec tag list
-
-Effect:
-- Shows all tags currently available in the system
+```
 
 ---
 
-### 4. tag read [tag name]
-Read the details of a specific tag.
+### 4. `tag read` — Show tag details
 
-Example:
+Shows the full configuration of a specific tag (config file, program, args, imports).
+
+```bash
 eec tag read dev
+```
 
-Effect:
-- Displays the configuration and imports associated with the `dev` tag
+Example output:
+```
+=== Tag information ===
+Tag:                  dev
+Config:               /home/user/.eec/configs/base.toml
+Program:              /usr/bin/bash
+Args:                 -l, -i
+Import config files:  go-dev.toml, python-dev.toml
+```
 
 ---
 
+### 5. `tag remove` — Delete a tag
+
+Removes the specified tag. The remaining tag list is displayed after deletion.
+
+```bash
+eec tag remove dev
+```
+
 ---
 
-### 5. tree [tag name]
+### 6. `tree` — Display the dependency tree of a tag
 
-Example:
+Visualizes the full dependency structure of a tag — which config files and sub-tags it pulls in — in a hierarchical tree format. Useful for auditing complex environments and spotting redundant or conflicting variable definitions.
+
+```bash
 eec tree dev
+```
 
-Effect:
-- Displays the dependency tree for the specified tag.
-- Shows which configuration files and sub-tags are imported.
-- Useful for understanding and debugging complex environment setups.
-
-Description:
-The `tree` command reads the metadata of a tag and prints its configuration dependency structure in a hierarchical (tree-like) format.
-This helps visualize how multiple TOML/YAML/JSON files are combined to form a complete environment.
-
-Example Output:
+Example output:
+```
 Dependency tree for tag: dev
 └── Imported tag: dev-base
     └── Imported file: base-dev.toml
@@ -106,54 +146,127 @@ Dependency tree for tag: dev
 └── Imported tag: dev-tools
     ├── Imported file: use-tools-dev.toml
     └── Imported file: gnu-tools-dev.toml
+```
 
-Use Case:
-Ideal for reviewing how a tag aggregates its environment definitions, confirming imports, and avoiding redundant or conflicting variable settings.
-
----
-
-### 6. run with --tag
-Run a program using an existing tag.
-
-Example:
-eec run --tag dev
-
-Effect:
-- Loads the environment linked to `dev` and runs the program defined there
-- No need to specify `--config-file` manually
+Duplicate environment variable warnings are also shown after the tree is printed.
 
 ---
 
-### 7. gen script
-Generate utility scripts for quick access to tags.
+### 7. `gen script` — Generate utility scripts
 
-Example:
+Generates shortcut scripts for each registered tag.
+
+```bash
 eec gen script
+```
 
-Effect:
-- On Windows: creates `t<tag>.bat`
-- On Linux/Mac: creates `t<tag>` shell scripts
-- For example, if `dev` exists:
-  tdev cmd
-  → runs `cmd` with the `dev` environment
+| OS | Generated file |
+|---|---|
+| Windows | `t<tagname>.bat` |
+| Linux / macOS | `t<tagname>` (shell script) |
+
+Example (with a `dev` tag registered):
+
+```bash
+tdev cmd
+# → runs cmd with the dev environment
+```
 
 ---
 
+### 8. `dump` — Dump resolved environment variables
 
-## Purpose
+Outputs the fully resolved environment variables for a given config or tag in shell-ready format. Useful for debugging or sourcing into other scripts.
 
-- Run environments without polluting the system
-- Use temporary configurations for testing and isolated development
-- Manage complex multi-language setups through configuration files and tags
-- Improve usability through generated scripts
-- Support safe and flexible workflows with REPL and restart features
-- Automate building of CLI, and libraries via `mage`
+```bash
+# Unix format (export KEY=VALUE)
+eec dump --tag dev --shell unix
+
+# Windows format (set KEY=VALUE)
+eec dump --tag dev --shell win
+
+# Raw KEY=VALUE format
+eec dump --tag dev
+```
+
+| `--shell` value | Output format |
+|---|---|
+| `unix` | `export KEY=VALUE` |
+| `win` | `set KEY=VALUE` |
+| (omitted) | `KEY=VALUE` |
+
+---
+
+### 9. `info` — Show version and runtime info
+
+Displays eec's version, PID, build hash, and other runtime details.
+
+```bash
+eec info
+```
+
+Example output:
+```
+=== eec Information ===
+version:     1.0.0
+pid:         12345
+goOS:        linux
+commitHash:  abc1234
+logMode:     release
+```
+
+---
+
+## Configuration File Format
+
+Config files can be written in TOML, YAML, JSON, or .env format.
+
+**TOML example:**
+
+```toml
+[[configs]]
+description = "Base paths"
+separator   = ":"
+
+[[envs]]
+key   = "PATH"
+value = "/usr/local/go/bin:/usr/bin"
+
+[[envs]]
+key   = "GOPATH"
+value = "/home/user/go"
+
+[program]
+path = "/usr/bin/bash"
+args = ["-l"]
+```
+
+---
+
+## Duplicate Environment Variable Tracking
+
+When multiple config files or tags define the same variable, eec tracks and reports the overrides.
+
+| Option | Behavior |
+|---|---|
+| Default | Print a warning for each overridden variable |
+| `--duplicate-strict` | Treat any override as an error and abort |
+| `--duplicate-no-warn` | Suppress all override warnings |
+
+---
+
+## Use Cases
+
+- **Isolated test environments:** Inject test-specific variables temporarily without touching the system
+- **Multi-language development:** Switch between Go / Rust / Python environments using tags
+- **CI/CD pipelines:** Reproducible environments driven entirely by config files
+- **Dependency auditing:** Use `tree` to visualize and verify complex environment compositions
 
 ---
 
 ## Summary
 
-`eec (env-exec)` is not just a tag manager,  
-but a **Go-based tool for cleanly managing, isolating, and executing environments**.  
+`eec (env-exec)` is more than a tag manager —  
+it's a **Go-based tool for cleanly isolating, managing, and executing environments**.
 
-It is especially useful for testing, multi-environment development, and scenarios where you need clean separation from the system configuration.  
+It shines in testing, multi-environment development, and any scenario where clean separation from system configuration is a hard requirement.
