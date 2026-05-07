@@ -241,6 +241,44 @@ path = "/usr/bin/bash"
 args = ["-l"]
 ```
 
+### Variable Expansion
+
+Use `${}` to reference other environment variables within values. References are resolved via **topological sort**, so declaration order does not matter — forward references work fine.
+
+```toml
+[[envs]]
+key   = "GOROOT"
+value = "/usr/local/go"
+
+[[envs]]
+key   = "PATH"
+value = "${GOROOT}/bin:/usr/bin"   # resolved correctly regardless of order
+
+[[envs]]
+key   = "GOPATH"
+value = "/home/user/go"
+
+[[envs]]
+key   = "GOBIN"
+value = "${GOPATH}/bin"            # also fine even if GOPATH is defined after this
+```
+
+### Command Substitution
+
+Use `$()` to embed the output of a shell command into a value.
+
+```toml
+[[envs]]
+key   = "BUILD_DATE"
+value = "$(date +%Y%m%d)"
+
+[[envs]]
+key   = "GIT_HASH"
+value = "$(git rev-parse --short HEAD)"
+```
+
+Both `${}` and `$()` can be combined freely in a single value.
+
 ---
 
 ## Duplicate Environment Variable Tracking
