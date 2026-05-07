@@ -221,24 +221,63 @@ logMode:     release
 
 Config files can be written in TOML, YAML, JSON, or .env format.
 
-**TOML example:**
+**TOML:**
 
 ```toml
-[[configs]]
-description = "Base paths"
-separator   = ":"
+[configs]
+description = "My environment"
 
-[[envs]]
-key   = "PATH"
-value = "/usr/local/go/bin:/usr/bin"
-
-[[envs]]
-key   = "GOPATH"
-value = "/home/user/go"
+[envs]
+GOROOT = "/usr/local/go"
+GOPATH = "/home/user/go"
+PATH   = ["/usr/local/go/bin", "/usr/bin"]   # array = entries are joined with the OS path separator
 
 [program]
-path = "/usr/bin/bash"
-args = ["-l"]
+path = "pwsh"
+args = ["-Command", "gci env:GO*"]
+```
+
+**YAML:**
+
+```yaml
+configs:
+  - description: "My environment"
+
+envs:
+  GOROOT: "/usr/local/go"
+  GOPATH: "/home/user/go"
+  PATH:
+    - "/usr/local/go/bin"
+    - "/usr/bin"
+
+program:
+  path: "pwsh"
+  args: ["-Command", "gci env:GO*"]
+```
+
+**JSON:**
+
+```json
+{
+  "configs": [{ "description": "My environment" }],
+  "envs": [
+    { "GOROOT": "/usr/local/go" },
+    { "GOPATH": "/home/user/go" },
+    { "PATH": ["C:\\go\\bin", "C:\\tools\\bin"] }
+  ],
+  "program": {
+    "path": "pwsh",
+    "args": ["-Command", "gci env:GO*"]
+  }
+}
+```
+
+**.env:**
+
+```dotenv
+GOROOT=/usr/local/go
+GOPATH=/home/user/go
+PATH=/usr/local/go/bin:/usr/bin
 ```
 
 ### Variable Expansion
@@ -246,21 +285,14 @@ args = ["-l"]
 Use `${}` to reference other environment variables within values. References are resolved via **topological sort**, so declaration order does not matter — forward references work fine.
 
 ```toml
-[[envs]]
-key   = "GOROOT"
-value = "/usr/local/go"
+[envs]
+STEP_01 = "Alpha"
+STEP_02 = "${STEP_01}-Beta"
+STEP_03 = "${STEP_02}-Gamma"
 
-[[envs]]
-key   = "PATH"
-value = "${GOROOT}/bin:/usr/bin"   # resolved correctly regardless of order
-
-[[envs]]
-key   = "GOPATH"
-value = "/home/user/go"
-
-[[envs]]
-key   = "GOBIN"
-value = "${GOPATH}/bin"            # also fine even if GOPATH is defined after this
+# Fine even in reverse order — topological sort handles it
+FINAL   = "Result: ${STEP_03}"
+PATH    = ["D:\\work\\${STEP_03}", "C:\\base\\${STEP_01}"]
 ```
 
 ### Command Substitution
@@ -268,13 +300,9 @@ value = "${GOPATH}/bin"            # also fine even if GOPATH is defined after t
 Use `$()` to embed the output of a shell command into a value.
 
 ```toml
-[[envs]]
-key   = "BUILD_DATE"
-value = "$(date +%Y%m%d)"
-
-[[envs]]
-key   = "GIT_HASH"
-value = "$(git rev-parse --short HEAD)"
+[envs]
+BUILD_DATE = "$(date +%Y%m%d)"
+GIT_HASH   = "$(git rev-parse --short HEAD)"
 ```
 
 Both `${}` and `$()` can be combined freely in a single value.
