@@ -70,7 +70,7 @@ func (c *Config) SortEnvsByDependency() error {
 	var resolve func(e Environ, visiting map[string]bool) error
 	resolve = func(e Environ, visiting map[string]bool) error {
 		if visiting[strings.ToUpper(e.Key)] {
-			return fmt.Errorf("循環参照を検知しました: %s", e.Key)
+			return fmt.Errorf("circular reference detected: %s", e.Key)
 		}
 		if seen[strings.ToUpper(e.Key)] {
 			return nil
@@ -299,9 +299,15 @@ func ReadJson(rt interfaces.Runtime, fileName string) (Config, error) {
 	config.SourcePath = general.NormalizeSourcePath(fileName)
 	err = json.Unmarshal(data, &config)
 	if err == nil {
-		config.NormalizeConfigs(rt)
-		config.NormalizeEnvs(rt)
-		config.SortEnvsByDependency()
+		if err := config.NormalizeConfigs(rt); err != nil {
+			return Config{}, err
+		}
+		if err := config.NormalizeEnvs(rt); err != nil {
+			return Config{}, err
+		}
+		if err := config.SortEnvsByDependency(); err != nil {
+			return Config{}, err
+		}
 	}
 	return config, err
 
@@ -316,9 +322,15 @@ func ReadYaml(rt interfaces.Runtime, fileName string) (Config, error) {
 	config.SourcePath = general.NormalizeSourcePath(fileName)
 	err = yaml.Unmarshal(data, &config)
 	if err == nil {
-		config.NormalizeConfigs(rt)
-		config.NormalizeEnvs(rt)
-		config.SortEnvsByDependency()
+		if err := config.NormalizeConfigs(rt); err != nil {
+			return Config{}, err
+		}
+		if err := config.NormalizeEnvs(rt); err != nil {
+			return Config{}, err
+		}
+		if err := config.SortEnvsByDependency(); err != nil {
+			return Config{}, err
+		}
 	}
 	return config, err
 
@@ -335,9 +347,15 @@ func ReadToml(rt interfaces.Runtime, fileName string) (Config, error) {
 	err = toml.Unmarshal(data, &config)
 
 	if err == nil {
-		config.NormalizeConfigs(rt)
-		config.NormalizeEnvs(rt)
-		config.SortEnvsByDependency()
+		if err := config.NormalizeConfigs(rt); err != nil {
+			return Config{}, err
+		}
+		if err := config.NormalizeEnvs(rt); err != nil {
+			return Config{}, err
+		}
+		if err := config.SortEnvsByDependency(); err != nil {
+			return Config{}, err
+		}
 	}
 	return config, err
 }
