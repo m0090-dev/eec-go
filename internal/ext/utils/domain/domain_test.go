@@ -469,7 +469,7 @@ func TestGenUtilsScript_EmptyHomeDir_NoPanic(t *testing.T) {
 			t.Errorf("GenUtilsScript panicked: %v", r)
 		}
 	}()
-	domain.GenUtilsScript(rt)
+	domain.GenUtilsScript(rt,"",false)
 }
 
 func TestGenUtilsScript_NoTagFiles_NoPanic(t *testing.T) {
@@ -479,7 +479,7 @@ func TestGenUtilsScript_NoTagFiles_NoPanic(t *testing.T) {
 			t.Errorf("GenUtilsScript panicked: %v", r)
 		}
 	}()
-	domain.GenUtilsScript(rt)
+	domain.GenUtilsScript(rt,"",false)
 }
 
 // GenWrapScript は MkdirAll → Create を mock FS に対して呼ぶことを確認
