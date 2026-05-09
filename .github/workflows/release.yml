@@ -56,7 +56,6 @@ jobs:
         run: |
           # アーカイブ名（例: eec-v1.0.0-windows.zip）
           ZIP_NAME="eec-${{ github.ref_name }}-${{ matrix.goos }}.zip"
-          
           # buildディレクトリに移動して圧縮
           cd build
           
@@ -67,14 +66,19 @@ jobs:
             # Linux/macOS: zipコマンド（標準搭載）を使用
             zip -r "../${ZIP_NAME}" ./*
           fi
-          
+          cd ..
+          sha256sum "${ZIP_NAME}" | awk '{print $1}' > "${ZIP_NAME}.sha256"
+    
           echo "ZIP_PATH=${ZIP_NAME}" >> $GITHUB_ENV
+          echo "SHA256_PATH=${ZIP_NAME}.sha256" >> $GITHUB_ENV
 
       - name: Release
         uses: softprops/action-gh-release@v2
         if: github.ref_type == 'tag'
         with:
-          # ZIPファイルのみをアップロード
-          files: ${{ env.ZIP_PATH }}
+          # ZIPファイル、ハッシュ値ファイルをアップロード
+          files: |
+            ${{ env.ZIP_PATH }}
+            ${{ env.SHA256_PATH }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
