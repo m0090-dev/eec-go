@@ -33,9 +33,10 @@ func ResolveRunOptions(
 		config, err = types.ReadConfig(rt, configFile)
 		if err != nil {
 			rt.Logger().Error().Err(err).Str("configFile", configFile).Msg("failed to read config")
-		} else {
-			allConfigs = append(allConfigs, config)
+			return "", "", nil, nil, nil, err
 		}
+		allConfigs = append(allConfigs, config)
+
 	}
 
 	for _, imp := range tagData.ImportConfigFiles {
