@@ -195,16 +195,37 @@ func GenWrapScript(rt interfaces.Runtime) {
 	}()
 }
 
-func GenUtilsScript(rt interfaces.Runtime) {
+func GenUtilsScript(rt interfaces.Runtime, outputDir string, clean bool) {
 	homeDir, _ := rt.Env().UserHomeDir()
 	if homeDir == "" {
 		return
+	}
+	scriptDir := outputDir
+	if scriptDir == "" {
+		scriptDir = filepath.Join(types.DEFAULT_SCRIPT_DIR, types.DEFAULT_UTILS_SCRIPT_DIR)
 	}
 	tagDir := filepath.Join(homeDir, types.DEFAULT_TAG_DIR)
 	tagFileLists, _ := general.GetFilesWithExtension(tagDir, ".tag")
 	tagNameLists := general.RemoveExtensions(general.BaseSlice(tagFileLists))
 	rt.Logger().Debug().
 		Str("tagNameLists", strings.Join(tagNameLists, ",")).Msg("")
+
+	if clean {
+		for _, name := range tagNameLists {
+			baseName := "t" + name
+			var fileName string
+			if rt.Env().GOOS() == "windows" {
+				fileName = general.AddExtension(baseName, ".cmd")
+			} else {
+				fileName = general.AddExtension(baseName, ".sh")
+			}
+			filePath := filepath.Join(scriptDir, fileName)
+			if err := rt.FS().Remove(filePath); err != nil {
+				rt.Logger().Warn().Err(err).Str("file", filePath).Msg("Failed to remove script")
+			}
+		}
+		return
+	}
 
 	for _, name := range tagNameLists {
 		baseName := "t" + name
@@ -250,7 +271,6 @@ func GenUtilsScript(rt interfaces.Runtime) {
 			Str("tagUtilsScriptFileName", tagUtilsScriptFileName).
 			Msg("")
 
-		scriptDir := filepath.Join(types.DEFAULT_SCRIPT_DIR, types.DEFAULT_UTILS_SCRIPT_DIR)
 		tagUtilsScriptFile := filepath.Join(scriptDir, tagUtilsScriptFileName)
 		rt.Logger().Debug().
 			Str("tagUtilsScriptFile", tagUtilsScriptFile).

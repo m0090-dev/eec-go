@@ -202,8 +202,8 @@ func (e *Engine) Run(ctx context.Context, opts types.RunOptions) error {
 // ----------------- Stubs for other command core behaviors ------------------
 
 // Gen performs generator-related core work (placeholder).
-func (e *Engine) GenScript() error {
-	domain.GenUtilsScript(e.Runtime)
+func (e *Engine) GenScript(outputDir string, clean bool) error {
+	domain.GenUtilsScript(e.Runtime, outputDir, clean)
 	return nil
 }
 

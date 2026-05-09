@@ -9,11 +9,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var outputDir string
+var cleanFlag bool
+
 func genScript() {
 	//domain.GenUtilsScript()
 	//domain.GenWrapScript()
 	e := core.NewEngine(nil)
-	if err := e.GenScript(); err != nil {
+	if err := e.GenScript(outputDir, cleanFlag); err != nil {
 		e.Runtime.Logger().Fatal().Err(err).Msg("Failed to gen script")
 	}
 }
@@ -67,7 +70,8 @@ Effect:
 func init() {
 	rootCmd.AddCommand(genCmd)
 	genCmd.AddCommand(scriptCmd)
-
+	scriptCmd.Flags().StringVarP(&outputDir, "output", "o", "", "Output directory for generated scripts")
+	scriptCmd.Flags().BoolVar(&cleanFlag, "clean", false, "Remove generated scripts")
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
