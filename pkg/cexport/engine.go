@@ -206,13 +206,16 @@ func Engine_Info(p C.PEngine) C.int {
 }
 
 //export Engine_GenScript
-func Engine_GenScript(p C.PEngine) C.int {
+func Engine_GenScript(p C.PEngine, outputDir *C.char, cleanFlag C.int) C.int {
 	id := uintptr(unsafe.Pointer(p))
 	e, ok := getEngine(id)
 	if !ok {
 		return -1
 	}
-	if err := e.GenScript(); err != nil {
+
+	goOutputDir := C.GoString(outputDir)
+	goCleanFlag := cleanFlag != 0
+	if err := e.GenScript(goOutputDir, goCleanFlag); err != nil {
 		return -1
 	}
 	return 0
