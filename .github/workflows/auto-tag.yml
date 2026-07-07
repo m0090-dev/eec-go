@@ -21,6 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: write
     if: >
       github.event_name == 'workflow_dispatch' ||
       contains(github.event.head_commit.message, '[release]')
