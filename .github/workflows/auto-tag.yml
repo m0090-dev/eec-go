@@ -61,3 +61,6 @@ jobs:
           git tag "${{ steps.next_version.outputs.new_version }}"
           git push origin "${{ steps.next_version.outputs.new_version }}"
           echo "新しいタグを作成しました: ${{ steps.next_version.outputs.new_version }}"
+      - name: releaseワークフローを実行
+        run: | 
+          gh workflow run Release.yml --ref "${{ steps.next_version.outputs.new_version }}"

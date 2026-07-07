@@ -3,6 +3,8 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+
 jobs:
   guard:
     runs-on: ubuntu-latest
