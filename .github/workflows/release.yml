@@ -4,7 +4,6 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
-
 jobs:
   guard:
     runs-on: ubuntu-latest
@@ -21,7 +20,6 @@ jobs:
           else
             echo "タグ ${{ github.ref_name }} は未使用です。ビルドを続行します。"
           fi
-
   build:
     needs: guard
     strategy:
@@ -37,7 +35,6 @@ jobs:
             goos: darwin
             build_lib: false
     runs-on: ${{ matrix.os }}
-
     permissions:
       contents: write
     steps:
@@ -47,6 +44,15 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Embed version from the actual release tag (single source of truth)
+        shell: bash
+        run: |
+          VERSION_NO_V="${GITHUB_REF_NAME#v}"
+          echo "Embedding version: $VERSION_NO_V (from tag $GITHUB_REF_NAME)"
+          python scripts/update_version.py "$VERSION_NO_V"
       - name: Install Mage
         run: go install github.com/magefile/mage@latest
       - name: Install build-essential (Linux)
@@ -62,32 +68,24 @@ jobs:
           export PATH=$PATH:$(go env GOPATH)/bin
           mage BuildCLIRelease
           if [ "${{ matrix.build_lib }}" = "true" ]; then mage BuildLibRelease; fi
-      # 各OSの成果物をひとつのZIPにまとめる
       - name: Package Assets
         shell: bash
         run: |
-          # アーカイブ名（例: eec-v1.0.0-windows.zip）
           ZIP_NAME="eec-${{ github.ref_name }}-${{ matrix.goos }}.zip"
-          # buildディレクトリに移動して圧縮
           cd build
-
           if [ "${{ matrix.os }}" == "windows-latest" ]; then
-            # Windows: 7zを使ってGUIフォルダや各種EXEを固める
             7z a "../${ZIP_NAME}" ./*
           else
-            # Linux/macOS: zipコマンド（標準搭載）を使用
             zip -r "../${ZIP_NAME}" ./*
           fi
           cd ..
           sha256sum "${ZIP_NAME}" | awk '{print $1}' > "${ZIP_NAME}.sha256"
-
           echo "ZIP_PATH=${ZIP_NAME}" >> $GITHUB_ENV
           echo "SHA256_PATH=${ZIP_NAME}.sha256" >> $GITHUB_ENV
       - name: Release
         uses: softprops/action-gh-release@v2
         if: github.ref_type == 'tag'
         with:
-          # ZIPファイル、ハッシュ値ファイルをアップロード
           files: |
             ${{ env.ZIP_PATH }}
             ${{ env.SHA256_PATH }}
