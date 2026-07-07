@@ -1,0 +1,63 @@
+name: Auto Tag
+
+on:
+  push:
+    branches:
+      - beta/stable
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'バージョンの上げ方(patch/minor/major)'
+        required: false
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.head_commit.message, '[release]')
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 最新タグを取得
+        id: get_tag
+        run: |
+          latest=$(git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n1)
+          if [ -z "$latest" ]; then
+            latest="v0.0.0"
+          fi
+          echo "latest=$latest" >> "$GITHUB_OUTPUT"
+
+      - name: 次のバージョンを計算
+        id: next_version
+        run: |
+          latest="${{ steps.get_tag.outputs.latest }}"
+          version="${latest#v}"
+          IFS='.' read -r major minor patch <<< "$version"
+          bump="${{ github.event.inputs.bump }}"
+          if [ -z "$bump" ]; then bump="patch"; fi
+          case "$bump" in
+            major) major=$((major+1)); minor=0; patch=0 ;;
+            minor) minor=$((minor+1)); patch=0 ;;
+            *) patch=$((patch+1)) ;;
+          esac
+          new_version="v${major}.${minor}.${patch}"
+          echo "new_version=$new_version" >> "$GITHUB_OUTPUT"
+
+      - name: タグを作成してpush
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "${{ steps.next_version.outputs.new_version }}"
+          git push origin "${{ steps.next_version.outputs.new_version }}"
+          echo "新しいタグを作成しました: ${{ steps.next_version.outputs.new_version }}"

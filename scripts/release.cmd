@@ -1,10 +1,12 @@
 @echo off
+chcp 65001 > nul
 setlocal enabledelayedexpansion
 
 :: --- デフォルト設定 ---
 set BRANCH=beta/stable
 set MESSAGE=chore: update version and push
 set SKIP_CI=false
+set DO_PUBLISH=false
 
 :: --- 引数の解析 ---
 :parse_args
@@ -26,11 +28,32 @@ if /i "%~1"=="--skip-ci" (
     shift
     goto parse_args
 )
+if /i "%~1"=="--publish" (
+    set DO_PUBLISH=true
+    shift
+    goto parse_args
+)
 shift
 goto parse_args
 
 :finalize_message
-:: skip-ciフラグが立っている場合、メッセージの末尾に付け加える
+REM publishフラグが立っている場合、メッセージの末尾に[release]マーカーを付け加える
+REM (auto-tag.ymlがこのマーカーを検知して新しいタグを自動発行する)
+if "%DO_PUBLISH%"=="true" (
+    set MESSAGE=%MESSAGE% [release]
+
+    REM auto-tag.ymlはbeta/stableへのpushしか見ていないため、
+    REM それ以外のブランチに--publish付きでpushしようとした場合は警告する
+    if /i not "%BRANCH%"=="beta/stable" (
+        echo.
+        echo Warning: --publish が指定されていますが、push先が beta/stable ではありません 現在: %BRANCH%。
+        echo          auto-tag.yml は beta/stable への push しか監視していないため
+        echo          このままではタグの自動発行が行われません。
+        echo.
+    )
+)
+
+REM skip-ciフラグが立っている場合、メッセージの末尾に付け加える
 if "%SKIP_CI%"=="true" (
     set MESSAGE=%MESSAGE% [skip ci]
 )
@@ -58,9 +81,17 @@ echo [4/4] Pushing to %BRANCH%...
 git push origin %BRANCH%
 
 echo.
-if "%SKIP_CI%"=="true" (
-    echo Done! (Actions was skipped as requested)
+
+
+if "%DO_PUBLISH%"=="true" (
+    echo Done! [release] marker included - auto-tag.yml will create a new tag if pushed to beta/stable.
 ) else (
-    echo Done! Factory is now working on GitHub Actions.
+    if "%SKIP_CI%"=="true" (
+        echo Done! Actions was skipped as requested
+    ) else (
+        echo Done! Factory is now working on GitHub Actions.
+    )
 )
+
+
 pause
